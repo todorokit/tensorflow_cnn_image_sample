@@ -31,6 +31,7 @@ flags.DEFINE_string('train', 'train.txt', 'File name of train data')
 flags.DEFINE_string('test', 'test.txt', 'File name of train data')
 flags.DEFINE_string('train_dir', 'c:\\tmp\\image_cnn', 'Directory to put the training data.')
 flags.DEFINE_integer('max_steps', 30, 'Number of steps to run trainer.')
+# batch_size は計算速度だけではなく、収束にも影響あり
 flags.DEFINE_integer('batch_size', 20, 'Batch size'
                      'Must divide evenly into the dataset sizes.')
 flags.DEFINE_float('learning_rate', 1e-4, 'Initial learning rate.')
@@ -70,7 +71,7 @@ def inference(images_placeholder, keep_prob):
     # プーリング層1
     with tf.name_scope('pool1') as scope:
         h_pool1 = max_pool_2x2(h_conv1)
-    # output shape [batch_size  , IMAGE_WIDTH, IMAGE_HEIGHT, manip//2]
+    # output shape [batch_size  , IMAGE_WIDTH//2, IMAGE_HEIGHT//2, manip]
     
     # 畳み込み層2
     with tf.name_scope('conv2') as scope:
@@ -82,7 +83,7 @@ def inference(images_placeholder, keep_prob):
     # プーリング層2の作成
     with tf.name_scope('pool2') as scope:
         h_pool2 = max_pool_2x2(h_conv2)
-    # output shape [batch_size  , IMAGE_WIDTH, IMAGE_HEIGHT, manip2//2]
+    # output shape [batch_size  , IMAGE_WIDTH//4, IMAGE_HEIGHT//4, manip2]
 
     # 全結合層1
     with tf.name_scope('fc1') as scope:
