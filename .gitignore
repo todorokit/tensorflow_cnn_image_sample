@@ -9,3 +9,6 @@ img
 face-classification
 debug
 config2.py
+out.txt
+model.*
+lbpcascade_animeface.xml
