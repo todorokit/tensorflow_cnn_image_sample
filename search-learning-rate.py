@@ -22,7 +22,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('train', 'train.txt', 'File name of train data')
 #flags.DEFINE_string('test', 'test.txt', 'File name of train data')
 flags.DEFINE_string('train_dir', 'c:\\tmp\\image_cnn', 'Directory to put the training data.')
-flags.DEFINE_integer('max_steps', 10, 'Number of steps to run trainer.')
+flags.DEFINE_integer('max_steps', 50, 'Number of steps to run trainer.')
 flags.DEFINE_string('batch_sizes', "10,20,40", 'Batch size'
                     'Must divide evenly into the dataset sizes.')
 flags.DEFINE_float('learning_rate_base', 2e-4, 'Initial learning rate.')

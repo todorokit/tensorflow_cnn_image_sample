@@ -19,15 +19,15 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('train', 'train.txt', 'File name of train data')
 flags.DEFINE_string('test', 'test.txt', 'File name of train data')
 flags.DEFINE_string('train_dir', 'c:\\tmp\\image_cnn', 'Directory to put the training data.')
-flags.DEFINE_integer('max_steps', 30, 'Number of steps to run trainer.')
+flags.DEFINE_integer('max_steps', 50, 'Number of steps to run trainer.')
 # batch_size は計算速度だけではなく、収束にも影響あり
-flags.DEFINE_integer('batch_size', 20, 'Batch size'
+flags.DEFINE_integer('batch_size', 10, 'Batch size'
                      'Must divide evenly into the dataset sizes.')
 flags.DEFINE_float('learning_rate', 1e-4, 'Initial learning rate.')
 
 if __name__ == '__main__':
-    train_image, train_label = deeptool.loadImages(FLAGS.train, IMAGE_SIZE, NUM_CLASSES)
-    test_image, test_label =  deeptool.loadImages(FLAGS.test, IMAGE_SIZE, NUM_CLASSES)
+    train_image, train_label, _ = deeptool.loadImages(FLAGS.train, IMAGE_SIZE, NUM_CLASSES)
+    test_image, test_label, _ =  deeptool.loadImages(FLAGS.test, IMAGE_SIZE, NUM_CLASSES)
     
     with tf.Graph().as_default():
         images_placeholder = tf.placeholder("float", shape=(None, IMAGE_SIZE*IMAGE_SIZE*NUM_RGB_CHANNEL))
@@ -69,10 +69,14 @@ if __name__ == '__main__':
             summary_str = sess.run(summary_op, feed_dict=feedDictNoProb)
             summary_writer.add_summary(summary_str, step)
 
-        print("test accuracy %g"%sess.run(acc, feed_dict={
+        acct =sess.run(acc, feed_dict={
             images_placeholder: test_image,
             labels_placeholder: test_label,
-            keep_prob: 1.0}))
+            keep_prob: 1.0})
+        f = open( "out.txt", "a")
+        f.write("%g\n" %(acct))
+        f.close()
+        print("%g\n" %(acct))
 
     cwd = os.getcwd()
     save_path = saver.save(sess, cwd+"\\model.ckpt")

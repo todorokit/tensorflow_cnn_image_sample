@@ -6,9 +6,13 @@ test.txt
 test
 checkpoint
 img
+map.py
 face-classification
 debug
 config2.py
 out.txt
 model.*
 lbpcascade_animeface.xml
+result*
+face.py
+make-img.sh
