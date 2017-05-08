@@ -40,12 +40,54 @@ if __name__ == '__main__':
 
     summary_op = tf.summary.merge_all()
     summary_writer = tf.summary.FileWriter(FLAGS.train_dir, sess.graph)
+    oks = []
+    lowscores = []
+    ngs = []
     for image, label, path in zip(test_image, test_label, paths):
         arr = sess.run(logits, feed_dict={images_placeholder: [image],keep_prob: 1.0})[0]
         indices = top1(arr)
         labelVal = top1(label)[0]
         topVal = indices[0]
+        score = arr[topVal]
         if (topVal == labelVal):
-            print("ok %s %g %s" %(config2.classList[topVal] , arr[topVal], path))
+            if ( score < 0.5) :
+                lowscores.append((path ,config2.classList[topVal], score))
+            else:
+                oks.append((path ,config2.classList[topVal], score))
         else:
-            print("ng label:%s result:%s %g %s" %(config2.classList[labelVal], config2.classList[topVal] , arr[topVal], path))
+            ngs.append((path, config2.classList[labelVal], config2.classList[topVal], score))
+
+    i = 0
+    tds = []
+    trs = []
+    def img (src):
+        return "<img width='25%%' src='file:///%s'/>" % (path.replace("\\", "/"))
+    for ng in ngs :
+        path , labelName, className, score = ng
+        i+=1
+        tds.append("<td>%s<br/>%s:%s<br/>%g</td>\n" % (img(path), labelName, className, score))
+        if (i >= 4):
+            trs.append("<tr>"+"".join(tds)+"</tr>")
+            tds = []
+            i = 0
+    ngstr = "".join(trs)
+            
+    i = 0
+    tds = []
+    trs = []
+    for low in lowscores :
+        path , labelName, score = low
+        i+=1
+        tds.append("<td>%s<br/>%s<br/>%g</td>\n" % (img(path), labelName, score))
+        if (i >= 4):
+            trs.append("<tr>"+"".join(tds)+"</tr>")
+            tds = []
+            i = 0
+    lowstr = "".join(trs)
+    print("""
+    <html><body>
+    間違ったもの<br>
+    <table border='1'>%s</table>
+    スコアが低いもの<br>
+    <table border='1'>%s</table>
+    </body></html>""" % (ngstr, lowstr))

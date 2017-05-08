@@ -15,7 +15,8 @@ def loadImages(labelFilePath, imageSize, numClass):
         img = makeImage(img, imageSize)
         image.append(img)
         labelData = np.zeros(numClass)
-        labelData[int(labelIndex)] = 1
+        if (labelIndex != "-1"):
+            labelData[int(labelIndex)] = 1
         label.append(labelData)
         paths.append(imgpath)
     file.close()

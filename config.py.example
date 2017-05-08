@@ -1,8 +1,21 @@
-NUM_CLASSES = 53
-IMAGE_SIZE = 32
+# original 3
+NUM_CLASSES = 3
+# original 28
+IMAGE_SIZE = 28
 NUM_RGB_CHANNEL = 3
+
+# original 32
 CHANNEL_MULTIPLIER_1 = 32
 FILTER1_SIZE = 5
+
+# original 64
 CHANNEL_MULTIPLIER_2 = 64
 FILTER2_SIZE = 5
+
+# original `None` # This is not None value
+USE_CONV3 = False
+CHANNEL_MULTIPLIER_3 = 128
+FILTER3_SIZE = 3
+
+# original 1024
 FC_MULTIPLIER_1 = 1024

@@ -20,16 +20,16 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('train', 'train.txt', 'File name of train data')
-#flags.DEFINE_string('test', 'test.txt', 'File name of train data')
 flags.DEFINE_string('train_dir', 'c:\\tmp\\image_cnn', 'Directory to put the training data.')
-flags.DEFINE_integer('max_steps', 50, 'Number of steps to run trainer.')
-flags.DEFINE_string('batch_sizes', "10,20,40", 'Batch size'
+flags.DEFINE_integer('max_steps', 10, 'Number of steps to run trainer.')
+flags.DEFINE_string('batch_sizes', "5,10", 'Batch size'
                     'Must divide evenly into the dataset sizes.')
 flags.DEFINE_float('learning_rate_base', 2e-4, 'Initial learning rate.')
 flags.DEFINE_float('learning_rate_odds', 0.9, 'Initial learning rate.')
+flags.DEFINE_float('num_try', 3, 'Initial learning rate.')
 
 if __name__ == '__main__':
-    train_image, train_label = deeptool.loadImages(FLAGS.train, IMAGE_SIZE, NUM_CLASSES)
+    train_image, train_label, _ = deeptool.loadImages(FLAGS.train, IMAGE_SIZE, NUM_CLASSES)
 #    test_image, test_label =  deeptool.loadImages(FLAGS.test, IMAGE_SIZE, NUM_CLASSES)
     batch_sizes = [ int(sizestr) for sizestr in FLAGS.batch_sizes.split(",")]
     result = OrderedDict()
@@ -57,7 +57,7 @@ if __name__ == '__main__':
             
             # 訓練の実行
             n = int(len(train_image)/batch_size)
-            for instep in range(3):
+            for instep in range(FLAGS.num_try):
                 for i in range(n):
                     batch = batch_size*i
                     sess.run(train_op, feed_dict={

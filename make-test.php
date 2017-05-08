@@ -30,6 +30,9 @@ function myscandir($dir) {
         if($file == "." || $file == "..") {
             continue;
         }
+        if($file == "-1") {
+            continue;
+        }
         $ret[] = $file;
     }
     return $ret;
@@ -74,9 +77,15 @@ foreach($images as $image) {
             $limits[$wordId] = 0;
         }
         $isTest = 0;
-        $limits[$wordId]++;
+        if ($wordId != "-1") {
+            $limits[$wordId]++;
+        }
     }
-    $id = getId($wordId);
+    if ($wordId == "-1") {
+        $id = "-1";
+    } else {
+        $id = getId($wordId);
+    }
 
     if ($isTest) {
         file_put_contents($teFile, "{$image} {$id}\n", FILE_APPEND);

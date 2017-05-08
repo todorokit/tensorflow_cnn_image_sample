@@ -15,6 +15,11 @@ CHANNEL_MULTIPLIER_2 = config.CHANNEL_MULTIPLIER_2
 FILTER2_SIZE = config.FILTER2_SIZE
 IMAGE_SIZE_2 = IMAGE_SIZE_1 // 2
 
+USE_CONV3 = config.USE_CONV3
+CHANNEL_MULTIPLIER_3 = config.CHANNEL_MULTIPLIER_3
+FILTER3_SIZE = config.FILTER3_SIZE
+IMAGE_SIZE_3 = IMAGE_SIZE_2 // 2
+
 FC_MULTIPLIER_1 = config.FC_MULTIPLIER_1
 
 def inference(images_placeholder, keep_prob):
@@ -59,19 +64,38 @@ def inference(images_placeholder, keep_prob):
         W_conv2 = weight_variable([FILTER2_SIZE, FILTER2_SIZE, CHANNEL_MULTIPLIER_1, CHANNEL_MULTIPLIER_2])
         b_conv2 = bias_variable([CHANNEL_MULTIPLIER_2])
         h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
-    # output shape [batch_size  , IMAGE_WIDTH, IMAGE_HEIGHT, CHANNEL_MULTIPLIER_2]
+    # output shape [batch_size  , IMAGE_WIDTH//2, IMAGE_HEIGHT//2, CHANNEL_MULTIPLIER_2]
 
     # プーリング層2の作成
     with tf.name_scope('pool2') as scope:
         h_pool2 = max_pool_2x2(h_conv2)
     # output shape [batch_size  , IMAGE_WIDTH//4, IMAGE_HEIGHT//4, CHANNEL_MULTIPLIER_2]
 
+    if (USE_CONV3):
+        # 畳み込み層3
+        with tf.name_scope('conv3') as scope:
+            W_conv3 = weight_variable([FILTER3_SIZE, FILTER3_SIZE, CHANNEL_MULTIPLIER_2, CHANNEL_MULTIPLIER_3])
+            b_conv3 = bias_variable([CHANNEL_MULTIPLIER_3])
+            h_conv3 = tf.nn.relu(conv2d(h_pool2, W_conv3) + b_conv3)
+            # output shape [batch_size  , IMAGE_WIDTH//4, IMAGE_HEIGHT//4, CHANNEL_MULTIPLIER_3]
+
+        # プーリング層2の作成
+        with tf.name_scope('POOL3') as scope:
+            h_pool3 = max_pool_2x2(h_conv3)
+            # output shape [batch_size  , IMAGE_WIDTH//8, IMAGE_HEIGHT//8, CHANNEL_MULTIPLIER_3]
+        IMAGE_SIZE_FULL = IMAGE_SIZE_3
+        FULL_MULT = CHANNEL_MULTIPLIER_3
+    else:
+        IMAGE_SIZE_FULL = IMAGE_SIZE_2
+        FULL_MULT = CHANNEL_MULTIPLIER_2
+        h_pool3 = h_pool2
+            
     # 全結合層1
     with tf.name_scope('fc1') as scope:
-        W_fc1 = weight_variable([IMAGE_SIZE_2*IMAGE_SIZE_2*CHANNEL_MULTIPLIER_2, FC_MULTIPLIER_1])
+        W_fc1 = weight_variable([IMAGE_SIZE_FULL*IMAGE_SIZE_FULL*FULL_MULT, FC_MULTIPLIER_1])
         b_fc1 = bias_variable([FC_MULTIPLIER_1])
-        h_pool2_flat = tf.reshape(h_pool2, [-1, IMAGE_SIZE_2*IMAGE_SIZE_2*CHANNEL_MULTIPLIER_2])
-        h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
+        h_pool3_flat = tf.reshape(h_pool3, [-1, IMAGE_SIZE_FULL*IMAGE_SIZE_FULL*FULL_MULT])
+        h_fc1 = tf.nn.relu(tf.matmul(h_pool3_flat, W_fc1) + b_fc1)
         # dropoutの設定
         h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
     # output shape [batch_size  , FC_MULTIPLIER_1]
