@@ -18,7 +18,23 @@ tensorflow '1.0.1'
 * Windows化
 * parameter search tool が付属
 
-# memo
+## data
+
+img/-1 => all label is zero
+img/class1/*.jpg png gif
+img/class2/*.jpg png gif
+..
+img/classN/*.jpg png gif
+
+# execute
+
+cp config.py.example config.py
+vi config.py
+vi modelcnn.py
+php make-test.php 100 30
+python train.py
+
+## memo
 
 * 初期値の周りが平(周囲全部最低スコア)なら微分もなにもないので、初期値が大事。
 * parameterは直感で決めるべきではないので、ツールを使う。（実験計画法未対応）
