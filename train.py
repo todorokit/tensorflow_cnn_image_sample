@@ -13,16 +13,18 @@ import modelcnn
 NUM_CLASSES = config.NUM_CLASSES
 IMAGE_SIZE = config.IMAGE_SIZE
 NUM_RGB_CHANNEL = config.NUM_RGB_CHANNEL
+wscale = config.WSCALE
+conv2dList=config.conv2dList
+FC_CHANNEL = config.FC_CHANNEL
+
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('train', 'train.txt', 'File name of train data')
 flags.DEFINE_string('test', 'test.txt', 'File name of train data')
 flags.DEFINE_string('train_dir', 'c:\\tmp\\image_cnn', 'Directory to put the training data.')
-flags.DEFINE_integer('max_steps', 50, 'Number of steps to run trainer.')
-# batch_size は計算速度だけではなく、収束にも影響あり
-flags.DEFINE_integer('batch_size', 10, 'Batch size'
-                     'Must divide evenly into the dataset sizes.')
+flags.DEFINE_integer('max_steps', 100, 'Number of steps to run trainer.')
+flags.DEFINE_integer('batch_size', 10, 'Batch size must divide evenly into the dataset sizes.')
 flags.DEFINE_float('learning_rate', 1e-4, 'Initial learning rate.')
 
 if __name__ == '__main__':
@@ -34,7 +36,7 @@ if __name__ == '__main__':
         labels_placeholder = tf.placeholder("float", shape=(None, NUM_CLASSES))
         keep_prob = tf.placeholder("float")
 
-        logits = modelcnn.inference(images_placeholder, keep_prob)
+        logits = modelcnn.inference(images_placeholder, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, FC_CHANNEL, NUM_CLASSES, wscale, keep_prob)
         loss_value = modelcnn.loss(logits, labels_placeholder)
         train_op = modelcnn.training(loss_value, FLAGS.learning_rate)
 
@@ -45,8 +47,7 @@ if __name__ == '__main__':
         sess.run(tf.global_variables_initializer())
 
         summary_op = tf.summary.merge_all()
-        summary_writer = tf.summary.FileWriter(FLAGS.train_dir, sess.graph)
-
+        summary_writer = tf.summary.FileWriter(FLAGS.train_dir, sess.graph
         feedDictNoProb = {
             images_placeholder: train_image,
             labels_placeholder: train_label,

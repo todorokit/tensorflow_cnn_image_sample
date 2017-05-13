@@ -1,21 +1,14 @@
-# original 3
-NUM_CLASSES = 3
-# original 28
-IMAGE_SIZE = 28
+import math
+NUM_CLASSES = 103
+IMAGE_SIZE = 64
 NUM_RGB_CHANNEL = 3
 
-# original 32
-CHANNEL_MULTIPLIER_1 = 32
-FILTER1_SIZE = 5
+conv2dList = [ ("conv1", 12, 32),
+               ("pool1", 3, None),
+               ("conv2", 5, 32),
+               ("pool2", 3, None),
+               ("conv3", 5, 64),
+               ("pool3", 3, None) ]
 
-# original 64
-CHANNEL_MULTIPLIER_2 = 64
-FILTER2_SIZE = 5
-
-# original `None` # This is not None value
-USE_CONV3 = False
-CHANNEL_MULTIPLIER_3 = 128
-FILTER3_SIZE = 3
-
-# original 1024
-FC_MULTIPLIER_1 = 1024
+FC_CHANNEL = 1024
+WSCALE=math.sqrt(2.0/NUM_CLASSES)
