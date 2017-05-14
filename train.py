@@ -47,7 +47,7 @@ if __name__ == '__main__':
         sess.run(tf.global_variables_initializer())
 
         summary_op = tf.summary.merge_all()
-        summary_writer = tf.summary.FileWriter(FLAGS.train_dir, sess.graph
+        summary_writer = tf.summary.FileWriter(FLAGS.train_dir, sess.graph)
         feedDictNoProb = {
             images_placeholder: train_image,
             labels_placeholder: train_label,
