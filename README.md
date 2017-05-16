@@ -10,12 +10,10 @@ This repository use for making model that image size fixed or poor gpu enviromen
 
 Apache License.
 
-## requirement
+## dependency
 
-```
-python3.5
-tensorflow '1.0.1'
-```
+* python3.5
+* tensorflow '1.0.1'
 
 ## やったこと
 
