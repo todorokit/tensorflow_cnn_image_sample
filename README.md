@@ -31,7 +31,7 @@ img/classN/*.jpg png gif
 cp config.py.example config.py
 vi config.py
 vi modelcnn.py
-php make-test.php 100 30
+python make-test.py 100 30
 python train.py
 
 ## memo

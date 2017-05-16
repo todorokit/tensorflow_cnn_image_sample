@@ -34,13 +34,13 @@ if __name__ == '__main__':
     labels_placeholder = tf.placeholder("float", shape=(None, NUM_CLASSES))
     keep_prob = tf.placeholder("float")
 
-    logits = modelcnn.inference(images_placeholder, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, FC_CHANNEL, NUM_CLASSES, wscale, keep_prob)
+    logits, _ = modelcnn.inference(images_placeholder, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, FC_CHANNEL, NUM_CLASSES, wscale, keep_prob)
 
     sess = tf.Session()
     saver = tf.train.Saver()
     sess.run(tf.global_variables_initializer())
     cwd = os.getcwd()
-    saver.restore(sess, cwd+"\\model.ckpt")
+    saver.restore(sess, os.path.join(cwd, config.modelFile))
 
     summary_op = tf.summary.merge_all()
     summary_writer = tf.summary.FileWriter(FLAGS.train_dir, sess.graph)
@@ -49,9 +49,8 @@ if __name__ == '__main__':
     ngs = []
     for image, label, path in zip(test_image, test_label, paths):
         arr = sess.run(logits, feed_dict={images_placeholder: [image],keep_prob: 1.0})[0]
-        indices = top1(arr)
         labelVal = top1(label)[0]
-        topVal = indices[0]
+        topVal = top1(arr)[0]
         score = arr[topVal]
         if (topVal == labelVal):
             if ( score < 0.5) :

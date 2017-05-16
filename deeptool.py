@@ -1,6 +1,7 @@
 import os
 import cv2
 import numpy as np
+import shutil
 
 def loadImages(labelFilePath, imageSize, numClass):
     file = open(labelFilePath, 'r')
@@ -41,21 +42,25 @@ def detectAnimeFace(filename, cascade_file = "lbpcascade_animeface.xml"):
                                      minNeighbors = 5,
                                      minSize = (32, 32))
     ret = []
+    ret2 = []
     for face in faces:
         x, y , w, h = face
         ret.append(image[y:y+h, x:x+w])
-    return ret
+        ret2.append(face)
+    return zip(ret, ret2)
 
 def getAnimeFace(imagePaths, imageSize):
     targets = []
     real_image = []
+    faces = []
     for i in range(0, len(imagePaths)):
-        for img in detectAnimeFace(imagePaths[i]):
+        for img, face in detectAnimeFace(imagePaths[i]):
             real_image.append(img)
             targets.append(makeImage(img, imageSize))
-    return (np.asarray(targets), real_image)
+            faces.append(face)
+    return (np.asarray(targets), real_image, faces)
 
-def detectFace(filename, cascade_file = "c:\\conda\\pkgs\\opencv-3.2.0-np112py35_201\\Library\\etc\\haarcascades\\haarcascade_frontalface_default.xml"):
+def detectFace(filename, cascade_file = "haarcascade_frontalface_default.xml"):
     if not os.path.isfile(cascade_file):
         raise RuntimeError("%s: not found" % cascade_file)
 
@@ -81,5 +86,14 @@ def getFace(imagePaths, imageSize):
             targets.append(makeImage(img, imageSize))
     return np.asarray(targets)
 
+def backup(modelFile, backupDir, suffix = ""):
+    cwd = os.getcwd()
+    
+    files = [modelFile+".data-00000-of-00001", modelFile + ".index", modelFile + ".meta", "checkpoint", "config.py"]
 
+    backupDirPath=os.path.join(cwd, backupDir)
+    os.makedirs(backupDirPath, exist_ok=True)
+    for file1 in files:
+        dest = os.path.join(backupDirPath, file1 + suffix)
+        shutil.copyfile(os.path.join(cwd, file1), dest)
 

@@ -12,3 +12,5 @@ conv2dList = [ ("conv1", 18, 32),
 
 FC_CHANNEL = 1536
 WSCALE=math.sqrt(2.0/NUM_CLASSES)
+
+modelFile = "model.ckpt"

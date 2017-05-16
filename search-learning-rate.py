@@ -27,9 +27,10 @@ flags.DEFINE_string('train_dir', 'c:\\tmp\\image_cnn', 'Directory to put the tra
 flags.DEFINE_integer('max_steps', 3, 'Number of steps to run trainer.')
 flags.DEFINE_string('batch_size', 10, 'Batch size'
                     'Must divide evenly into the dataset sizes.')
+flags.DEFINE_integer('acc_batch_size', 5000, 'Accuracy batch size. This must divide evenly into the test data set sizes.')
 flags.DEFINE_float('learning_rate_base', 1e-4, 'Initial learning rate.')
-flags.DEFINE_float('learning_rate_odds', 0.9, 'Initial learning rate.')
-flags.DEFINE_float('num_loop', 5, 'Initial learning rate.')
+flags.DEFINE_float('learning_rate_odds', 0.9, 'Initial learning rate * this rate.')
+flags.DEFINE_float('num_loop', 5, 'num loop .')
 
 conv2dList = config.conv2dList
 
@@ -51,12 +52,12 @@ if __name__ == '__main__':
                     fcChannel
 #                    wscale
                     )
-                   for loop in range(FLAGS.num_loop)
 #                   for batch_size in batch_sizes
                    for filterSize in filterSizes
                    for channel in channels
                    for fcChannel in fcChannels
 #                   for wscale in wscales
+                   for loop in range(FLAGS.num_loop)
                   ]:
 #        learningRate, batch_size, filterSize, channel, fcChannel, wscale = params
         learningRate, filterSize, channel, fcChannel = params
@@ -67,7 +68,7 @@ if __name__ == '__main__':
             labels_placeholder = tf.placeholder("float", shape=(None, NUM_CLASSES))
             keep_prob = tf.placeholder("float")
             
-            logits = modelcnn.inference(images_placeholder, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, fcChannel, NUM_CLASSES, wscale, keep_prob)
+            logits, _ = modelcnn.inference(images_placeholder, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, fcChannel, NUM_CLASSES, wscale, keep_prob)
             loss_value = modelcnn.loss(logits, labels_placeholder)
             acc = modelcnn.accuracy(logits, labels_placeholder)
 
@@ -91,11 +92,8 @@ if __name__ == '__main__':
                         keep_prob: 0.50})
                 
             timeTrain = time.time()
-            accVal = sess.run(acc, feed_dict={
-                images_placeholder: train_image,
-                labels_placeholder: train_label,
-                keep_prob: 1.0})
+            accuracy = modelcnn.calcAccuracy(sess, acc, images_placeholder, labels_placeholder, keep_prob, FLAGS.acc_batch_size, train_image, train_label)
 
             fom = "test params %s, accuracy %g"
-            print(fom%(params, accVal))
+            print(fom%(params, accuracy))
             sys.stdout.flush()
