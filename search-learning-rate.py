@@ -52,12 +52,12 @@ if __name__ == '__main__':
                     fcChannel
 #                    wscale
                     )
+                   for loop in range(FLAGS.num_loop)
 #                   for batch_size in batch_sizes
                    for filterSize in filterSizes
                    for channel in channels
                    for fcChannel in fcChannels
 #                   for wscale in wscales
-                   for loop in range(FLAGS.num_loop)
                   ]:
 #        learningRate, batch_size, filterSize, channel, fcChannel, wscale = params
         learningRate, filterSize, channel, fcChannel = params
@@ -81,7 +81,7 @@ if __name__ == '__main__':
                 labels_placeholder: train_label,
                 keep_prob: 1.0}
             
-            # 訓練の実行
+            # training
             n = int(len(train_image)/batch_size)
             for step in range(FLAGS.max_steps):
                 for i in range(n):

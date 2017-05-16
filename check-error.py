@@ -89,8 +89,8 @@ if __name__ == '__main__':
     lowstr = "".join(trs)
     print("""
     <html><body>
-    間違ったもの<br>
+    MISTAKEN<br>
     <table border='1'>%s</table>
-    スコアが低いもの<br>
+    LOW SCORES<br>
     <table border='1'>%s</table>
     </body></html>""" % (ngstr, lowstr))
