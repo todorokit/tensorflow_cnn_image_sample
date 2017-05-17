@@ -76,7 +76,10 @@ for image in images:
         addDict(limits, className)
 
     if className == "-1":
+        # 損失関数も正当率計算もzeroベクトルに対応していない。
         id = -1;
+        continue
+
     else:
         id = getId(className);
 

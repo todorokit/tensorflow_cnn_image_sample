@@ -41,13 +41,17 @@ if __name__ == '__main__':
     batch_size = FLAGS.batch_size
     result = OrderedDict()
     filterSizes = [18]
+    filter2Sizes = [4,5,6,7,8]
+    filter3Sizes = [3,4,5,6]
     channels = [32]
-    fcChannels = [1200, 1400, 1500, 1600, 1800]
+    fcChannels = [1800]
 #    wscales = [math.sqrt(2.0/NUM_CLASSES)]
 
     for params in [(FLAGS.learning_rate_base * (FLAGS.learning_rate_odds** loop),
 #                    batch_size,
                     filterSize,
+                    filter2Size,
+                    filter3Size,
                     channel,
                     fcChannel
 #                    wscale
@@ -55,13 +59,17 @@ if __name__ == '__main__':
                    for loop in range(FLAGS.num_loop)
 #                   for batch_size in batch_sizes
                    for filterSize in filterSizes
+                   for filter2Size in filter2Sizes
+                   for filter3Size in filter3Sizes
                    for channel in channels
                    for fcChannel in fcChannels
 #                   for wscale in wscales
                   ]:
 #        learningRate, batch_size, filterSize, channel, fcChannel, wscale = params
-        learningRate, filterSize, channel, fcChannel = params
+        learningRate, filterSize, filter2Size, filter3Size, channel, fcChannel = params
         conv2dList[0] = ("conv1", filterSize, channel)
+        conv2dList[2] = ("conv2", filter2Size, 32)
+        conv2dList[4] = ("conv3", filter3Size, 64)
         with tf.Graph().as_default(), tf.Session() as sess:
             timeStart = time.time()
             images_placeholder = tf.placeholder("float", shape=(None, IMAGE_SIZE*IMAGE_SIZE*NUM_RGB_CHANNEL))

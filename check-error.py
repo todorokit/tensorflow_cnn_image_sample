@@ -64,7 +64,8 @@ if __name__ == '__main__':
     tds = []
     trs = []
     def img (src):
-        return "<img width='25%%' src='file:///%s'/>" % (path.replace("\\", "/"))
+        return "<img width='25%%' src='file:///%s'/>" % (os.path.join(cwd, path).replace("\\", "/"))
+    
     for ng in ngs :
         path , labelName, className, score = ng
         i+=1
