@@ -16,8 +16,7 @@ def loadImages(labelFilePath, imageSize, numClass):
         img = makeImage(img, imageSize)
         image.append(img)
         labelData = np.zeros(numClass)
-        if (labelIndex != "-1"):
-            labelData[int(labelIndex)] = 1
+        labelData[int(labelIndex)] = 1
         label.append(labelData)
         paths.append(imgpath)
     file.close()
@@ -97,3 +96,11 @@ def backup(modelFile, backupDir, suffix = ""):
         dest = os.path.join(backupDirPath, file1 + suffix)
         shutil.copyfile(os.path.join(cwd, file1), dest)
 
+
+def listDir(dir):
+    ret = []
+    for file in os.listdir(dir):
+        if file == "." or file == "..":
+            continue;
+        ret.append(os.path.join(dir, file))
+    return ret

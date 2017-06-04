@@ -17,7 +17,9 @@ testnum = int(sys.argv[2])
 def listClass(dir):
     ret = []
     for file in os.listdir(dir):
-        if(file == "." or file == ".." or file == "-1"):
+        if(file == "." or file == ".."):
+# -1 は 全部 0 のラベルにしたかった。
+#        if(file == "." or file == ".." or file == "-1"):
             continue;
         ret.append(file)
     return ret
@@ -74,14 +76,9 @@ for image in images:
         isTest = True
     else:
         addDict(limits, className)
-
-    if className == "-1":
-        # 損失関数も正当率計算もzeroベクトルに対応していない。
-        id = -1;
-        continue
-
-    else:
-        id = getId(className);
+#    if className == "-1":
+#        continue
+    id = getId(className);
 
     if isTest:
         teFp.write("%s %d\n" % (image, id));

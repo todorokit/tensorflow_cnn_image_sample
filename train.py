@@ -1,21 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
-import time
+import os, sys, time
 import tensorflow as tf
 import tensorflow.python.platform
 
-import config
-import deeptool
-import modelcnn
+import config, deeptool, modelcnn
 
 NUM_CLASSES = config.NUM_CLASSES
 IMAGE_SIZE = config.IMAGE_SIZE
 NUM_RGB_CHANNEL = config.NUM_RGB_CHANNEL
-wscale = config.WSCALE
 conv2dList=config.conv2dList
-FC_CHANNEL = config.FC_CHANNEL
+WSCALE=config.WSCALE
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -25,7 +21,7 @@ flags.DEFINE_string('test', 'test.txt', 'File name of train data')
 flags.DEFINE_string('train_dir', 'c:\\tmp\\image_cnn', 'Directory to put the training data.')
 flags.DEFINE_integer('max_steps', 100, 'Number of steps to run trainer.')
 flags.DEFINE_integer('batch_size', 20, 'Training batch size. This must divide evenly into the train dataset sizes.')
-flags.DEFINE_integer('acc_batch_size', 2000, 'Accuracy batch size. This must divide evenly into the test data set sizes.')
+flags.DEFINE_integer('acc_batch_size', 1860, 'Accuracy batch size. This must divide evenly into the test data set sizes.')
 flags.DEFINE_float('learning_rate', 1e-4, 'Initial learning rate.')
 flags.DEFINE_string('is_continue', "", 'Initial learning rate.')
 flags.DEFINE_string('is_best', "", 'Initial learning rate.')
@@ -59,8 +55,9 @@ if __name__ == '__main__':
         images_placeholder = tf.placeholder("float", shape=(None, IMAGE_SIZE*IMAGE_SIZE*NUM_RGB_CHANNEL))
         labels_placeholder = tf.placeholder("float", shape=(None, NUM_CLASSES))
         keep_prob = tf.placeholder("float")
+        batch_size = tf.placeholder("int32")
 
-        logits, tuneArray = modelcnn.inference(images_placeholder, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, FC_CHANNEL, NUM_CLASSES, wscale, keep_prob)
+        logits, tuneArray = modelcnn.inference(images_placeholder, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, WSCALE, keep_prob, False)
         loss_value = modelcnn.loss(logits, labels_placeholder)
         train_op = modelcnn.training(loss_value, FLAGS.learning_rate)
 
@@ -87,11 +84,12 @@ if __name__ == '__main__':
                     labels_placeholder: train_label[batch:batch+FLAGS.batch_size],
                     keep_prob: 0.5})
 
-            train_accuracy = modelcnn.calcAccuracy(sess, acc, images_placeholder, labels_placeholder, keep_prob, FLAGS.acc_batch_size, train_image, train_label)
-            test_accuracy = modelcnn.calcAccuracy(sess, acc, images_placeholder, labels_placeholder, keep_prob, FLAGS.acc_batch_size, test_image, test_label)
+            train_accuracy = modelcnn.calcAccuracy(sess, batch_size, acc, images_placeholder, labels_placeholder, keep_prob, FLAGS.acc_batch_size, train_image, train_label)
+            test_accuracy = modelcnn.calcAccuracy(sess, batch_size, acc, images_placeholder, labels_placeholder, keep_prob, FLAGS.acc_batch_size, test_image, test_label)
             writeBest(sess,saver,test_accuracy)
 
             print("step %d, training accuracy %g, test accuracy %g, %d batch/sec"%(step, train_accuracy, test_accuracy, int(n/(time.time() - startTime))))
+            sys.stdout.flush()
 #            summary_str = sess.run(summary_op, feed_dict=feedDictNoProb)
 #            summary_writer.add_summary(summary_str, step)
 

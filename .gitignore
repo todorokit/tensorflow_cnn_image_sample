@@ -5,6 +5,7 @@ test.txt
 test
 img
 backup
+backup2
 best-model
 checkpoint
 map.py
@@ -13,7 +14,9 @@ config.py
 config2.py
 out.txt
 model.*
+model-multi.*
 haarcascade_frontalface_default.xml
 lbpcascade_animeface.xml
 result*
 miss.html
+test.py

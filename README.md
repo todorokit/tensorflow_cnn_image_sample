@@ -1,10 +1,10 @@
 # CNN 画像分類 サンプル
 
-いろいろなところで紹介されている CNN画像分類 を 綺麗?に書き直した。
+いろいろなところで紹介されている CNN画像分類 を 綺麗?に書き直した。勉強用。
 
-改良が加わり、画像サイズ固定や貧弱なGPU(環境)用にカスタマイズ可能なモデル作成するためのライブラリ兼ツールとなった。
+This project is for my studying.
 
-This repository use for making model that image size fixed or poor gpu enviroment.
+Now only train.py can use. train-mgpu.py is debugging.(only GradientDescentOptimizer can use.)
 
 ## License
 
@@ -21,6 +21,7 @@ Apache License.
 * configでモデルを拡張可能にした。
 * Windows化
 * parameter search tool が付属
+* multi GPU
 
 ## data
 

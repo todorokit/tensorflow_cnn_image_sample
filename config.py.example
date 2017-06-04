@@ -1,16 +1,30 @@
+import tensorflow as tf
 import math
+
 NUM_CLASSES = 20
 IMAGE_SIZE = 64
 NUM_RGB_CHANNEL = 3
 
 conv2dList = [ ("conv1", 18, 32),
+               ("conv1-a", 1, 32),
+               ("conv1-b", 1, 32),
                ("pool1", 3, None),
-               ("conv2", 5, 32),
+               ("norm1", 4, None),
+               ("conv2", 7, 32),
+               ("conv2-a", 1, 32),
+               ("conv2-b", 1, 32),
                ("pool2", 3, None),
-               ("conv3", 5, 64),
-               ("pool3", 3, None) ]
+               ("norm2", 4, None),
+               ("conv3", 3, 64),
+               ("conv3-a", 1, 64),
+               ("conv3-b", 1, 64),
+               ("pool3", 3, None),
+               ("norm3", 4, None),
+               ("flatten", None, None),
+               ("dropout", None, None),
+               ("fc2", tf.nn.softmax, NUM_CLASSES)
+]
 
-FC_CHANNEL = 1536
 WSCALE=math.sqrt(2.0/NUM_CLASSES)
-
 modelFile = "model.ckpt"
+modelMultiFile = "model-multi.ckpt"
