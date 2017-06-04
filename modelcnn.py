@@ -128,33 +128,35 @@ def calcAccuracy(sess, batch_size, op, images_placeholder, labels_placeholder, k
 # model tutrials image cifar10_multi_gpu_train.py
 def average_gradients(tower_grads):
   average_grads = []
+  # 各variableに対して
   for grad_and_vars in zip(*tower_grads):
     grads = []
+
+    # 各GPUの結果に対して 平均を取る
     for g, _ in grad_and_vars:
       expanded_g = tf.expand_dims(g, 0)
       grads.append(expanded_g)
-
     grad = tf.concat(grads, 0)
     grad = tf.reduce_mean(grad, 0)
 
     v = grad_and_vars[0][1]
+    # v は 全GPU同じはず
     grad_and_var = (grad, v)
     average_grads.append(grad_and_var)
   return average_grads
 
 ## FIXME: make class. not use FLAGS
 def multiGpuLearning(FLAGS, imagesPh, labelsPh, keep_prob, batch_size, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, wscale):
+    debug = tf.constant(1)
     with tf.device('/cpu:0'):
         global_step = tf.get_variable(
             'global_step', [],
             initializer=tf.constant_initializer(0), trainable=False)
 
         logitsList = []
-        lossList = []
         towerGrads = []
         tuneArrays = []
-#        opt = tf.train.AdamOptimizer(FLAGS.learning_rate, beta1=0.9, beta2=0.999)
-        opt = tf.train.GradientDescentOptimizer(FLAGS.learning_rate)
+        opt = tf.train.AdamOptimizer(FLAGS.learning_rate, beta1=0.9, beta2=0.999)
 
         reuseVar = False
         with tf.variable_scope(tf.get_variable_scope()):
@@ -168,20 +170,21 @@ def multiGpuLearning(FLAGS, imagesPh, labelsPh, keep_prob, batch_size, IMAGE_SIZ
                 with tf.device("/gpu:"+str(gpu_id)):
                     with tf.name_scope("tower_"+str(gpu_id)):
                         logits, tuneArray = inference(slicedImagePh, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, wscale, keep_prob, reuseVar)
-                        # 1回目はinferenceでreuse(参照)しない。2回目以降はreuse(参照)する。
+                        # 1回目はinferenceでreuse(参照)しない。
+                        # 2回目以降はreuse(参照)する。
+                        # Adam(scope外) は reuse = Falseが必要。
                         reuseVar = True
                         tuneArrays.append(tuneArray)
                         logitsList.append((logits, slicedLabelPh))
                         loss_value = loss(logits, slicedLabelPh)
-                        lossList.append(loss_value)
                         grads = opt.compute_gradients(loss_value)
                         towerGrads.append(grads)
 
             grads = average_gradients(towerGrads)
             train_op = opt.apply_gradients(grads, global_step=global_step)
 
-            # adam では殆どの計算をcpuで行なっている。
+            # CPUで殆どの計算を行う例
 #            vscope = tf.get_variable_scope()
 #            train_op = opt.minimize(tf.add_n(lossList))
             acc_op = tf.add_n([accuracy(logits, labels) for logits, labels in logitsList])
-            return train_op, acc_op, tuneArrays
+            return train_op, acc_op, tuneArrays, debug

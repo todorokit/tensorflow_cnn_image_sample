@@ -56,7 +56,7 @@ if __name__ == '__main__':
         labelsPh = tf.placeholder("float", shape=(None, NUM_CLASSES))
         keep_prob = tf.placeholder("float")
         batch_size = tf.placeholder("int32")
-        train_op, acc_op, tuneArrays = modelcnn.multiGpuLearning(FLAGS, imagesPh, labelsPh, keep_prob, batch_size, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, WSCALE)
+        train_op, acc_op, tuneArrays, debug = modelcnn.multiGpuLearning(FLAGS, imagesPh, labelsPh, keep_prob, batch_size, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, WSCALE)
 
         saver = tf.train.Saver()
         sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
