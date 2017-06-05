@@ -27,7 +27,7 @@ flags.DEFINE_string('is_continue', "", 'Initial learning rate.')
 flags.DEFINE_string('is_best', "", 'Initial learning rate.')
 
 def getBest():
-    path = os.path.join("best-model", "score-multi.txt")
+    path = os.path.join("best-model", "score.txt")
     if os.path.exists(path):
         fp = open(path, "r")
         score = fp.read().replace("\n", "")
@@ -41,7 +41,7 @@ def writeBest(sess, saver, score):
         cwd = os.getcwd()
         save_path = saver.save(sess, os.path.join(cwd, config.modelFile))
         deeptool.backup(config.modelFile, "best-model")
-        path = os.path.join("best-model", "score-multi.txt")
+        path = os.path.join("best-model", "score.txt")
         fp = open(path, "w")
         fp.write(str(score))
         fp.close()
