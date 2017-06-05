@@ -27,7 +27,6 @@ Apache License.
 ## data
 
 ```
-img/-1 => all label is zero
 img/class1/*.jpg png gif
 img/class2/*.jpg png gif
 ..
