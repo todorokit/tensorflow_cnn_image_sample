@@ -8,29 +8,23 @@
 ## モデル(logits)を作り直してはいけない。=モデルと同じ変数でなければいけない。
 ## runしないと本trainで取り込めない。
 
-import os
-import sys
-import os.path
-import datetime
+## MEMO
+## multi GPU でもモデルは変わらない
+
+import os, sys, os.path, datetime
 
 import tensorflow as tf
-import cv2
-import numpy
 
-import config
-import config2
-import deeptool
-import modelcnn
+import config, deeptool, modelcnn
 
-wscale = config.WSCALE
+WSCALE = config.WSCALE
 
 NUM_CLASSES = config.NUM_CLASSES
 IMAGE_SIZE = config.IMAGE_SIZE
 NUM_RGB_CHANNEL = config.NUM_RGB_CHANNEL
 conv2dList=config.conv2dList
-FC_CHANNEL = config.FC_CHANNEL
-
 modelFile = config.modelFile
+
 cwd = os.getcwd()
 modelpath = os.path.join(cwd, modelFile)
 
@@ -53,7 +47,7 @@ if __name__ == '__main__':
     labels_placeholder = tf.placeholder("float", shape=(None, NUM_CLASSES))
 
     # tuneArrayにNUM_CLASSESに関わる変数は入らない。
-    logits, tuneArray = modelcnn.inference(images_placeholder, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, FC_CHANNEL, NUM_CLASSES, wscale, keep_prob)
+    logits, tuneArray = modelcnn.inference(images_placeholder, keep_prob, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, WSCALE, False)
     loss_value = modelcnn.loss(logits, labels_placeholder)
     train_op = modelcnn.training(loss_value, 1e-4)
 

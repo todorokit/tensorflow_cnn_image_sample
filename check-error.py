@@ -15,7 +15,6 @@ NUM_CLASSES = config.NUM_CLASSES
 IMAGE_SIZE = config.IMAGE_SIZE
 NUM_RGB_CHANNEL = config.NUM_RGB_CHANNEL
 conv2dList=config.conv2dList
-FC_CHANNEL = config.FC_CHANNEL
 wscale = config.WSCALE
 
 flags = tf.app.flags
@@ -34,7 +33,7 @@ if __name__ == '__main__':
     labels_placeholder = tf.placeholder("float", shape=(None, NUM_CLASSES))
     keep_prob = tf.placeholder("float")
 
-    logits, _ = modelcnn.inference(images_placeholder, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, FC_CHANNEL, NUM_CLASSES, wscale, keep_prob)
+    logits, _ = modelcnn.inference(images_placeholder, keep_prob, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, wscale)
 
     sess = tf.Session()
     saver = tf.train.Saver()
@@ -42,8 +41,6 @@ if __name__ == '__main__':
     cwd = os.getcwd()
     saver.restore(sess, os.path.join(cwd, config.modelFile))
 
-    summary_op = tf.summary.merge_all()
-    summary_writer = tf.summary.FileWriter(FLAGS.train_dir, sess.graph)
     oks = []
     lowscores = []
     ngs = []

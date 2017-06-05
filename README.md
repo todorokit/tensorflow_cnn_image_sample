@@ -1,10 +1,11 @@
 # CNN 画像分類 サンプル
 
 いろいろなところで紹介されている CNN画像分類 を 綺麗?に書き直した。勉強用。
+データセットは メモリに載らなくてはならなそう。
 
 This project is for my studying.
 
-Now only train.py and train-mgpu.py can usable. 
+Multi GPU model use data slice, so "train.txt size / batch_size" must be divisible.
 
 ## License
 

@@ -26,5 +26,6 @@ conv2dList = [ ("conv1", 18, 32),
 ]
 
 WSCALE=math.sqrt(2.0/NUM_CLASSES)
+# multi gpu make same model.ckpt
 modelFile = "model.ckpt"
-modelMultiFile = "model-multi.ckpt"
+num_gpu = 2

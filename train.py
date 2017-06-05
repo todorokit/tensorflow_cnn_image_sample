@@ -21,7 +21,7 @@ flags.DEFINE_string('test', 'test.txt', 'File name of train data')
 flags.DEFINE_string('train_dir', 'c:\\tmp\\image_cnn', 'Directory to put the training data.')
 flags.DEFINE_integer('max_steps', 100, 'Number of steps to run trainer.')
 flags.DEFINE_integer('batch_size', 20, 'Training batch size. This must divide evenly into the train dataset sizes.')
-flags.DEFINE_integer('acc_batch_size', 1860, 'Accuracy batch size. This must divide evenly into the test data set sizes.')
+flags.DEFINE_integer('acc_batch_size', 1860, 'Accuracy batch size. Take care of memory limit.')
 flags.DEFINE_float('learning_rate', 1e-4, 'Initial learning rate.')
 flags.DEFINE_string('is_continue', "", 'Initial learning rate.')
 flags.DEFINE_string('is_best', "", 'Initial learning rate.')
@@ -52,16 +52,12 @@ if __name__ == '__main__':
     
     cwd = os.getcwd()
     with tf.Graph().as_default():
-        images_placeholder = tf.placeholder("float", shape=(None, IMAGE_SIZE*IMAGE_SIZE*NUM_RGB_CHANNEL))
-        labels_placeholder = tf.placeholder("float", shape=(None, NUM_CLASSES))
-        keep_prob = tf.placeholder("float")
-        batch_size = tf.placeholder("int32")
-
-        logits, tuneArray = modelcnn.inference(images_placeholder, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, WSCALE, keep_prob, False)
-        loss_value = modelcnn.loss(logits, labels_placeholder)
+        phs = modelcnn.Placeholders(IMAGE_SIZE, IMAGE_SIZE, NUM_RGB_CHANNEL, NUM_CLASSES)
+        dataset = modelcnn.InMemoryDataset(train_image, train_label, test_image, test_label, FLAGS.batch_size, FLAGS.acc_batch_size)
+        logits, _ = modelcnn.inference(phs.getImages(), phs.getKeepProb(), IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, WSCALE, False)
+        loss_value = modelcnn.loss(logits, phs.getLabels())
         train_op = modelcnn.training(loss_value, FLAGS.learning_rate)
-
-        acc = modelcnn.accuracy(logits, labels_placeholder)
+        acc_op = modelcnn.accuracy(logits, phs.getLabels())
 
         saver = tf.train.Saver()
         sess = tf.Session()
@@ -73,19 +69,18 @@ if __name__ == '__main__':
         summary_op = tf.summary.merge_all()
         summary_writer = tf.summary.FileWriter(FLAGS.train_dir, sess.graph)
 
-        # 訓練の実行
         n = int(len(train_image)/FLAGS.batch_size)
         for step in range(FLAGS.max_steps):
             startTime = time.time()
-            for i in range(n):
-                batch = FLAGS.batch_size*i
-                sess.run(train_op, feed_dict={
-                    images_placeholder: train_image[batch:batch+FLAGS.batch_size],
-                    labels_placeholder: train_label[batch:batch+FLAGS.batch_size],
-                    keep_prob: 0.5})
+            for i in dataset.getTrainLoop():
+                sess.run(train_op, feed_dict=phs.getDict(
+                    dataset.getTrainImage(i),
+                    dataset.getTrainLabel(i),
+                    0.5
+                ))
 
-            train_accuracy = modelcnn.calcAccuracy(sess, batch_size, acc, images_placeholder, labels_placeholder, keep_prob, FLAGS.acc_batch_size, train_image, train_label)
-            test_accuracy = modelcnn.calcAccuracy(sess, batch_size, acc, images_placeholder, labels_placeholder, keep_prob, FLAGS.acc_batch_size, test_image, test_label)
+            train_accuracy = modelcnn.calcAccuracy(sess, acc_op, phs, dataset)
+            test_accuracy = modelcnn.calcAccuracy(sess, acc_op, phs, dataset, isTest = True)
             writeBest(sess,saver,test_accuracy)
 
             print("step %d, training accuracy %g, test accuracy %g, %d batch/sec"%(step, train_accuracy, test_accuracy, int(n/(time.time() - startTime))))

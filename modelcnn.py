@@ -12,7 +12,7 @@ def makeVar(name, shape, initializer):
         var = tf.get_variable(name, shape, initializer=initializer)
         return var
 
-def inference(images_placeholder, imageSize, numInitChannel, conv2dList, numClasses,wscale, keep_prob, reuse_variables):
+def inference(imagePh, keepProb, imageSize, numInitChannel, conv2dList, numClasses, wscale, reuse_variables = False):
     def weight_variable(tuneArray, shape, wscale= 0.1):
 #      print (shape, wscale)
       v = makeVar("W", shape, initializer=tf.truncated_normal_initializer(stddev=wscale))
@@ -53,7 +53,7 @@ def inference(images_placeholder, imageSize, numInitChannel, conv2dList, numClas
 
     tuneArray = []
     prevChannel = numInitChannel
-    h = tf.reshape(images_placeholder, [-1, imageSize, imageSize, numInitChannel])
+    h = tf.reshape(imagePh, [-1, imageSize, imageSize, numInitChannel])
 
     for name, filterSize, channel in conv2dList:
         if (re.search("^pool", name)):
@@ -63,7 +63,7 @@ def inference(images_placeholder, imageSize, numInitChannel, conv2dList, numClas
             prevChannel *= imageSize * imageSize
             h = tf.reshape(h, [-1,  prevChannel])
         elif (re.search("^dropout", name)):
-            h = tf.nn.dropout(h, keep_prob)
+            h = tf.nn.dropout(h, keepProb)
         elif (re.search("^fc", name)):
             func = filterSize
             h = func(linear(None, name, h, prevChannel, channel))
@@ -98,32 +98,139 @@ def accuracy(logits, labels):
     accuracy = tf.reduce_sum(tf.cast(correct_prediction, "float"))
     return accuracy
 
-# all data version
-def calcAccuracy(sess, batch_size, op, images_placeholder, labels_placeholder, keep_prob, acc_batch_size, images, labels):
-    acc_n = len(images)
-    acc_loop = int(acc_n/acc_batch_size)
-    acc_sum = 0
+class Placeholders():
+    def __init__(self, imageSizeW, imageSizeH, numChannel, numClasses):
+        self.imagesPh = tf.placeholder("float", shape=(None, imageSizeW*imageSizeH*numChannel))
+        self.labelsPh = tf.placeholder("float", shape=(None, numClasses))
+        self.keep_prob = tf.placeholder("float")
+        self.batch_size = tf.placeholder("int32")
+
+    def getImages(self):
+        return self.imagesPh
+
+    def getLabels(self):
+        return self.labelsPh
+
+    def getKeepProb(self):
+        return self.keep_prob
+
+    def getBatchSize(self):
+        return self.batch_size
+
+    def getDict(self, images, labels, keepProb):
+        return {
+            self.getImages(): images,
+            self.getLabels(): labels,
+            self.getKeepProb(): keepProb,
+            self.getBatchSize(): len(images)
+        }
     
-    acc_batch = 0
-    for i in range(acc_loop):
-        acc_batch = acc_batch_size*i
-#        print(acc_batch, acc_batch+acc_batch_size)
-        acc_sum += sess.run(op, feed_dict={
-            images_placeholder: images[acc_batch:acc_batch+acc_batch_size],
-            labels_placeholder: labels[acc_batch:acc_batch+acc_batch_size],
-            keep_prob: 1.0,
-            batch_size: acc_batch_size
-        })
-    acc_batch = acc_batch_size*acc_loop
-    if acc_batch != acc_n:
-#        print(acc_batch, acc_n)
-        acc_sum += sess.run(op, feed_dict={
-            images_placeholder: images[acc_batch:acc_n],
-            labels_placeholder: labels[acc_batch:acc_n],
-            keep_prob: 1.0,
-            batch_size: acc_batch_size
-        })
-    return acc_sum / acc_n
+## in Memory Dataset
+class InMemoryDataset():
+    def __init__(self, images, labels, testImages, testLabels, batch_size, acc_batch_size):
+        self.images = images
+        self.labels = labels
+        self.testImages = testImages
+        self.testLabels = testLabels
+        self.batch_size = batch_size
+        self.acc_batch_size = acc_batch_size
+        self.splitedImage = None
+        self.splitedLabel = None
+        self.splitedAccracyImage = None
+        self.splitedAccracyLabel = None
+        self.splitedTestAccracyImage = None
+        self.splitedTestAccracyLabel = None
+        self.numTrainLoop = 0
+        self.numAccuracyLoop = 0
+        self.numTestAccuracyLoop = 0
+        self.calcBatchImage()
+        
+    def calcBatchImage(self):
+        n = len(self.images)
+        self.numTrainLoop = n // self.batch_size
+        self.splitedImage = []
+        self.splitedLabel = []
+        # train は割り切って下さい
+        for i in range(self.numTrainLoop):
+            batch = self.batch_size * i
+            self.splitedImage.append(self.images[batch:batch+self.batch_size])
+            self.splitedLabel.append(self.labels[batch:batch+self.batch_size])
+
+        self.numAccuracyLoop = n//self.acc_batch_size
+        self.splitedAccuracyImage = []
+        self.splitedAccuracyLabel = []
+        for i in range(self.numAccuracyLoop):
+            batch = self.acc_batch_size * i
+            #print(batch, batch+self.acc_batch_size)
+            self.splitedAccuracyImage.append(self.images[batch:batch+self.acc_batch_size])
+            self.splitedAccuracyLabel.append(self.labels[batch:batch+self.acc_batch_size])
+
+        batch = batch + self.acc_batch_size
+        if batch != n:
+            self.numAccuracyLoop += 1
+            #print(batch, n)
+            self.splitedAccuracyImage.append(self.images[batch:n])
+            self.splitedAccuracyLabel.append(self.labels[batch:n])
+
+        n = len(self.testImages)
+        self.numTestAccuracyLoop = n //self.acc_batch_size
+        self.splitedTestAccuracyImage = []
+        self.splitedTestAccuracyLabel = []
+        for i in range(self.numTestAccuracyLoop):
+            batch = self.acc_batch_size * i
+            #print(batch, batch+self.acc_batch_size)
+            self.splitedTestAccuracyImage.append(self.testImages[batch:batch+self.acc_batch_size])
+            self.splitedTestAccuracyLabel.append(self.testLabels[batch:batch+self.acc_batch_size])
+        batch = batch + self.acc_batch_size
+        if batch != n:
+            self.numTestAccuracyLoop += 1
+            #print(batch, n)
+            self.splitedTestAccuracyImage.append(self.images[batch:n])
+            self.splitedTestAccuracyLabel.append(self.labels[batch:n])
+
+    def getAccBatchSize(self):
+        return self.acc_batch_size
+
+    def getTrainLoop(self):
+        return range(self.numTrainLoop)
+    def getTrainImage(self, i):
+        return self.splitedImage[i]
+    def getTrainLabel(self, i):
+        return self.splitedLabel[i]
+
+    def getAccuracyLoop(self, isTest= False):
+        if isTest:
+            return range(self.numTestAccuracyLoop)
+        else:
+            return range(self.numAccuracyLoop)
+    def getAccuracyImage(self, i, isTest = False):
+        if isTest:
+            return self.splitedTestAccuracyImage[i]
+        else:
+            return self.splitedAccuracyImage[i]
+    def getAccuracyLabel(self, i, isTest= False):
+        if isTest:
+            return self.splitedTestAccuracyLabel[i]
+        else:
+            return self.splitedAccuracyLabel[i]
+
+    def getAccuracyLen(self, isTest= False):
+        if isTest:
+            return len(self.testImages)
+        else:
+            return len(self.images)
+
+    
+# all data version
+def calcAccuracy(sess, op, phs,dataset, isTest = False):
+    acc_sum = 0
+    for i in dataset.getAccuracyLoop(isTest):
+        acc_sum += sess.run(op, feed_dict=phs.getDict(
+            dataset.getAccuracyImage(i, isTest),
+            dataset.getAccuracyLabel(i, isTest),
+            1.0
+        ))
+    return acc_sum / dataset.getAccuracyLen(isTest)
 
 # model tutrials image cifar10_multi_gpu_train.py
 def average_gradients(tower_grads):
@@ -145,8 +252,8 @@ def average_gradients(tower_grads):
     average_grads.append(grad_and_var)
   return average_grads
 
-## FIXME: make class. not use FLAGS
-def multiGpuLearning(FLAGS, imagesPh, labelsPh, keep_prob, batch_size, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, wscale):
+## FIXME: make parameter class. not use FLAGS
+def multiGpuLearning(learning_rate, phs, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, wscale):
     debug = tf.constant(1)
     with tf.device('/cpu:0'):
         global_step = tf.get_variable(
@@ -155,26 +262,29 @@ def multiGpuLearning(FLAGS, imagesPh, labelsPh, keep_prob, batch_size, IMAGE_SIZ
 
         logitsList = []
         towerGrads = []
-        tuneArrays = []
-        opt = tf.train.AdamOptimizer(FLAGS.learning_rate, beta1=0.9, beta2=0.999)
+        xtuneArray = None
+        opt = tf.train.AdamOptimizer(learning_rate, beta1=0.9, beta2=0.999)
 
         reuseVar = False
         with tf.variable_scope(tf.get_variable_scope()):
-            for gpu_id in range(0, FLAGS.num_gpu):
-                print("GPU ID:" +str(gpu_id))
-                in_batch_length = tf.div(batch_size, FLAGS.num_gpu)
+            # FIXME config.num_gpu
+            for gpu_id in range(0, config.num_gpu):
+                # print("GPU ID:" +str(gpu_id))
+                # data must batch_size == len(phs.getImages())
+                in_batch_length = tf.div(phs.getBatchSize(), config.num_gpu)
                 in_batch_start = tf.multiply(in_batch_length, gpu_id)
                 slice_start = [in_batch_start, 0]
-                slicedImagePh = tf.slice(imagesPh, slice_start, [in_batch_length, IMAGE_SIZE * IMAGE_SIZE* NUM_RGB_CHANNEL])
-                slicedLabelPh = tf.slice(labelsPh, slice_start, [in_batch_length, NUM_CLASSES])
+                slicedImagePh = tf.slice(phs.getImages(), slice_start, [in_batch_length, IMAGE_SIZE * IMAGE_SIZE* NUM_RGB_CHANNEL])
+                slicedLabelPh = tf.slice(phs.getLabels(), slice_start, [in_batch_length, NUM_CLASSES])
                 with tf.device("/gpu:"+str(gpu_id)):
                     with tf.name_scope("tower_"+str(gpu_id)):
-                        logits, tuneArray = inference(slicedImagePh, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, wscale, keep_prob, reuseVar)
+                        logits, tuneArray = inference(slicedImagePh, phs.getKeepProb(), IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, wscale, reuseVar)
                         # 1回目はinferenceでreuse(参照)しない。
                         # 2回目以降はreuse(参照)する。
                         # Adam(scope外) は reuse = Falseが必要。
                         reuseVar = True
-                        tuneArrays.append(tuneArray)
+                        if xtuneArray is None:
+                            xtuneArray = tuneArray
                         logitsList.append((logits, slicedLabelPh))
                         loss_value = loss(logits, slicedLabelPh)
                         grads = opt.compute_gradients(loss_value)
@@ -183,8 +293,5 @@ def multiGpuLearning(FLAGS, imagesPh, labelsPh, keep_prob, batch_size, IMAGE_SIZ
             grads = average_gradients(towerGrads)
             train_op = opt.apply_gradients(grads, global_step=global_step)
 
-            # CPUで殆どの計算を行う例
-#            vscope = tf.get_variable_scope()
-#            train_op = opt.minimize(tf.add_n(lossList))
             acc_op = tf.add_n([accuracy(logits, labels) for logits, labels in logitsList])
-            return train_op, acc_op, tuneArrays, debug
+            return train_op, acc_op, xtuneArray, debug
