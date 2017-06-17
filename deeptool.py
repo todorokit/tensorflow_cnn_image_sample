@@ -23,7 +23,7 @@ def loadImages(labelFilePath, imageSize, numClass):
     return (np.asarray(image), np.asarray(label), paths)
 
 def makeImage(img, imageSize):
-    img = cv2.resize(img, (imageSize, imageSize))
+    img = cv2.resize(img, (imageSize[0], imageSize[1]))
     return img.flatten().astype(np.float32)/255.0
 
 # https://github.com/nagadomi/lbpcascade_animeface

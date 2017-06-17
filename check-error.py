@@ -29,11 +29,11 @@ def top1(arr):
 if __name__ == '__main__':
     test_image, test_label, paths =  deeptool.loadImages(FLAGS.test, IMAGE_SIZE, NUM_CLASSES)
     
-    images_placeholder = tf.placeholder("float", shape=(None, IMAGE_SIZE*IMAGE_SIZE*NUM_RGB_CHANNEL))
+    images_placeholder = tf.placeholder("float", shape=(None, IMAGE_SIZE[0]*IMAGE_SIZE[1]*NUM_RGB_CHANNEL))
     labels_placeholder = tf.placeholder("float", shape=(None, NUM_CLASSES))
     keep_prob = tf.placeholder("float")
 
-    logits, _ = modelcnn.inference(images_placeholder, keep_prob, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, wscale)
+    logits, _ = modelcnn.inference(images_placeholder, keep_prob, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, wscale)
 
     sess = tf.Session()
     saver = tf.train.Saver()
@@ -44,6 +44,7 @@ if __name__ == '__main__':
     oks = []
     lowscores = []
     ngs = []
+    stat = {}
     for image, label, path in zip(test_image, test_label, paths):
         arr = sess.run(logits, feed_dict={images_placeholder: [image],keep_prob: 1.0})[0]
         labelVal = top1(label)[0]
@@ -56,6 +57,10 @@ if __name__ == '__main__':
                 oks.append((path ,config2.classList[topVal], score))
         else:
             ngs.append((path, config2.classList[labelVal], config2.classList[topVal], score))
+            try:
+                stat[labelVal] = stat[labelVal] + 1
+            except:
+                stat[labelVal] = 1
 
     i = 0
     tds = []
@@ -85,10 +90,17 @@ if __name__ == '__main__':
             tds = []
             i = 0
     lowstr = "".join(trs)
+
+    trs = []
+    for label in stat:
+        trs.append("<tr><td>%s</td><td>%d</td></tr>" % (config2.classList[label], stat[label]))
+    statstr = "".join(trs)
     print("""
     <html><body>
+    STAT<br>
+    <table border='1'>%s</table>
     MISTAKEN<br>
     <table border='1'>%s</table>
     LOW SCORES<br>
     <table border='1'>%s</table>
-    </body></html>""" % (ngstr, lowstr))
+    </body></html>""" % (statstr,ngstr, lowstr))

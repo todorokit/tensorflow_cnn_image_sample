@@ -46,12 +46,13 @@ if __name__ == '__main__':
                    for channel in channels
                   ]:
         learningRate, filterSize, channel = params
-        conv2dList[0] = ("conv1", filterSize, channel)
+        conv2dList[0].filter_size =[1, filterSize, filterSize, 1]
+        conv2dList[0].channel = channel
         with tf.Graph().as_default(), tf.Session() as sess:
-            phs = modelcnn.Placeholders(IMAGE_SIZE, IMAGE_SIZE, NUM_RGB_CHANNEL, NUM_CLASSES)
+            phs = modelcnn.Placeholders(IMAGE_SIZE, NUM_RGB_CHANNEL, NUM_CLASSES)
             dataset = modelcnn.InMemoryDataset(train_image, train_label, [], [], FLAGS.batch_size, FLAGS.acc_batch_size)
 
-            logits, _ = modelcnn.inference(phs.getImages(), phs.getKeepProb(), IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, WSCALE, False)
+            logits, _ = modelcnn.inference(phs.getImages(), phs.getKeepProb(), IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, WSCALE, False)
             loss_value = modelcnn.loss(logits, phs.getLabels())
             train_op = modelcnn.training(loss_value, learningRate)
             acc_op = modelcnn.accuracy(logits, phs.getLabels())
@@ -64,7 +65,8 @@ if __name__ == '__main__':
                     sess.run(train_op, feed_dict=phs.getDict(
                         dataset.getTrainImage(i),
                         dataset.getTrainLabel(i),
-                        0.5
+                        0.5,
+                        True
                     ))
                 
             accuracy = modelcnn.calcAccuracy(sess, acc_op, phs, dataset)

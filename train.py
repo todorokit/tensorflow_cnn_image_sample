@@ -2,10 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import os, sys, time
+from pprint import pprint
+
 import tensorflow as tf
 import tensorflow.python.platform
 
 import config, deeptool, modelcnn
+
 
 NUM_CLASSES = config.NUM_CLASSES
 IMAGE_SIZE = config.IMAGE_SIZE
@@ -52,9 +55,9 @@ if __name__ == '__main__':
     
     cwd = os.getcwd()
     with tf.Graph().as_default():
-        phs = modelcnn.Placeholders(IMAGE_SIZE, IMAGE_SIZE, NUM_RGB_CHANNEL, NUM_CLASSES)
+        phs = modelcnn.Placeholders(IMAGE_SIZE, NUM_RGB_CHANNEL, NUM_CLASSES, True)
         dataset = modelcnn.InMemoryDataset(train_image, train_label, test_image, test_label, FLAGS.batch_size, FLAGS.acc_batch_size)
-        logits, _ = modelcnn.inference(phs.getImages(), phs.getKeepProb(), IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, WSCALE, False)
+        logits, _ = modelcnn.inference2(phs.getImages(), phs.getKeepProb(), IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, WSCALE, False, phs.getPhaseTrain())
         loss_value = modelcnn.loss(logits, phs.getLabels())
         train_op = modelcnn.training(loss_value, FLAGS.learning_rate)
         acc_op = modelcnn.accuracy(logits, phs.getLabels())
@@ -69,21 +72,22 @@ if __name__ == '__main__':
         summary_op = tf.summary.merge_all()
         summary_writer = tf.summary.FileWriter(FLAGS.train_dir, sess.graph)
 
-        n = int(len(train_image)/FLAGS.batch_size)
+        n = len(train_image)
         for step in range(FLAGS.max_steps):
             startTime = time.time()
             for i in dataset.getTrainLoop():
                 sess.run(train_op, feed_dict=phs.getDict(
                     dataset.getTrainImage(i),
                     dataset.getTrainLabel(i),
-                    0.5
+                    0.5,
+                    True
                 ))
 
             train_accuracy = modelcnn.calcAccuracy(sess, acc_op, phs, dataset)
             test_accuracy = modelcnn.calcAccuracy(sess, acc_op, phs, dataset, isTest = True)
             writeBest(sess,saver,test_accuracy)
 
-            print("step %d, training accuracy %g, test accuracy %g, %d batch/sec"%(step, train_accuracy, test_accuracy, int(n/(time.time() - startTime))))
+            print("step %d, training accuracy %g, test accuracy %g, %g data/sec"%(step, train_accuracy, test_accuracy, n/(time.time() - startTime)))
             sys.stdout.flush()
 #            summary_str = sess.run(summary_op, feed_dict=feedDictNoProb)
 #            summary_writer.add_summary(summary_str, step)

@@ -23,10 +23,10 @@ if __name__ == '__main__':
     test_image, test_image_real, _ = deeptool.getAnimeFace(sys.argv[1:], IMAGE_SIZE)
 
     keep_prob = tf.constant(1.0)
-    images_placeholder = tf.placeholder("float", shape=(None, IMAGE_SIZE*IMAGE_SIZE*NUM_RGB_CHANNEL))
+    images_placeholder = tf.placeholder("float", shape=(None, IMAGE_SIZE[0]*IMAGE_SIZE[1]*NUM_RGB_CHANNEL))
     labels_placeholder = tf.placeholder("float", shape=(None, NUM_CLASSES))
 
-    logits, _ = modelcnn.inference(images_placeholder, keep_prob, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, wscale, False)
+    logits, _ = modelcnn.inference(images_placeholder, keep_prob, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, wscale)
     sess = tf.InteractiveSession()
 
     saver = tf.train.Saver()
@@ -37,6 +37,7 @@ if __name__ == '__main__':
     for i in range(len(test_image)):
         image = test_image[i]
         real_image = test_image_real[i]
+        print(_)
 #        cv2.imwrite(os.path.join(cwd, "debug%d.png")% (i), real_image);
         arr = logits.eval(feed_dict={images_placeholder: [image]})[0]
         indices = top5(arr)

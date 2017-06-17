@@ -1,88 +1,22 @@
 import sys, re
+from pprint import pprint
 
 import tensorflow as tf
 import tensorflow.python.platform
 
 import config
 
-def makeVar(name, shape, initializer):
-    # 1 gpu の場合、cpuに保存しない方が速い。multi gpu の場合, cpu側のメモリに保存しなくてはならない
-    # リファクタリングして class化する時に1gpuの場合を自動で考慮する。
-    with tf.device('/cpu:0'):
-        var = tf.get_variable(name, shape, initializer=initializer)
-        return var
-
-def inference(imagePh, keepProb, imageSize, numInitChannel, conv2dList, numClasses, wscale, reuse_variables = False):
-    def weight_variable(tuneArray, shape, wscale= 0.1):
-#      print (shape, wscale)
-      v = makeVar("W", shape, initializer=tf.truncated_normal_initializer(stddev=wscale))
-      if (tuneArray is not None):
-          tuneArray.append(v)
-      return v
-
-    def bias_variable(tuneArray, shape):
-      v = makeVar("b", shape, initializer=tf.constant_initializer(0.1))
-      if (tuneArray is not None):
-          tuneArray.append(v)
-      return v
-
-    def conv2d(x, W):
-      return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
-
-    def max_pool_2x2(x, size = 2, slide = 2):
-      return tf.nn.max_pool(x, ksize=[1, size, size, 1],
-                            strides=[1, slide, slide, 1], padding='SAME')
-    
-    def max_pool(name, x, size = 2):
-        with tf.name_scope(name) as scope:
-            return max_pool_2x2(x, size)
-
-    def conv2dWeightBias(tuneArray, name, x, inChannel, outChannel, filterSize, slide = 1, wscale=1):
-        with tf.variable_scope(name+"_var", reuse = reuse_variables) as vscope:
-            with tf.name_scope(name) as scope:
-                W = weight_variable(tuneArray, [filterSize, filterSize, inChannel, outChannel], wscale)
-                b = bias_variable(tuneArray, [outChannel])
-                return tf.nn.conv2d(x, W, strides=[1, slide, slide, 1], padding='SAME')+ b
-
-    def linear(tuneArray, name, x, inChannel, outChannel):
-        with tf.variable_scope(name+"_var", reuse = reuse_variables) as vscope:
-            with tf.name_scope(name) as scope:
-                W = weight_variable(tuneArray, [inChannel, outChannel], wscale)
-                b = bias_variable(tuneArray, [outChannel])
-                return tf.matmul(h, W) + b
-
+def inference(imagePh, keepProb, imageSize, numInitChannel, conv2dList, wscale, reuse = False, phaseTrain = None):
     tuneArray = []
-    prevChannel = numInitChannel
-    h = tf.reshape(imagePh, [-1, imageSize, imageSize, numInitChannel])
+    h = tf.reshape(imagePh, [-1, imageSize[0], imageSize[1], numInitChannel])
 
-    for name, filterSize, channel in conv2dList:
-        if (re.search("^pool", name)):
-            h = max_pool(name, h, filterSize)
-            imageSize = imageSize // 2
-        elif (re.search("^flatten", name)):
-            prevChannel *= imageSize * imageSize
-            h = tf.reshape(h, [-1,  prevChannel])
-        elif (re.search("^dropout", name)):
-            h = tf.nn.dropout(h, keepProb)
-        elif (re.search("^fc", name)):
-            func = filterSize
-            h = func(linear(None, name, h, prevChannel, channel))
-            prevChannel = channel
-        elif (re.search("^norm", name)):
-            depth_radius = filterSize
-            norm1 = tf.nn.lrn(h, depth_radius, bias=1.0, alpha=0.001 / 9.0, beta=0.75, name=name)
-        elif re.search("^conv", name):
-            h = tf.nn.relu(conv2dWeightBias(tuneArray, name, h , prevChannel, channel, filterSize, 1, wscale))
-            prevChannel = channel
-        else:
-            raise Exception("modelcnn::inference config.conv2dList no supported method")
-            
+    for layer in conv2dList:
+#        print(klass.name)
+#        print(h.shape)
+        h = layer.apply(tuneArray, h, wscale, phaseTrain, keepProb, reuse)
     return (h, tuneArray)
 
 def loss(logits, labels):
-    # Mul
-#    print(logits.shape)
-#    print(labels.shape)
     cross_entropy = -tf.reduce_sum(labels*tf.log(tf.clip_by_value(logits,1e-10,1.0)))
 #    tf.summary.scalar("cross_entropy", cross_entropy)
     return cross_entropy
@@ -91,19 +25,18 @@ def training(loss, learning_rate):
     train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
     return train_step
 
-# batch_size version
 def accuracy(logits, labels):
-    # logits.shape = labels.shape = [batch_size , num_class]
     correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))
     accuracy = tf.reduce_sum(tf.cast(correct_prediction, "float"))
     return accuracy
 
 class Placeholders():
-    def __init__(self, imageSizeW, imageSizeH, numChannel, numClasses):
-        self.imagesPh = tf.placeholder("float", shape=(None, imageSizeW*imageSizeH*numChannel))
+    def __init__(self, imageSize, numChannel, numClasses, is_training = False):
+        self.imagesPh = tf.placeholder("float", shape=(None, imageSize[0]*imageSize[1]*numChannel))
         self.labelsPh = tf.placeholder("float", shape=(None, numClasses))
         self.keep_prob = tf.placeholder("float")
         self.batch_size = tf.placeholder("int32")
+        self.phase_train = tf.placeholder(tf.bool, name='phase_train') if is_training else None
 
     def getImages(self):
         return self.imagesPh
@@ -117,14 +50,26 @@ class Placeholders():
     def getBatchSize(self):
         return self.batch_size
 
-    def getDict(self, images, labels, keepProb):
-        return {
-            self.getImages(): images,
-            self.getLabels(): labels,
-            self.getKeepProb(): keepProb,
-            self.getBatchSize(): len(images)
-        }
-    
+    def getPhaseTrain(self):
+        return self.phase_train
+
+    def getDict(self, images, labels, keepProb, is_training = False):
+        if self.getPhaseTrain() is None:
+            return {
+                self.getImages(): images,
+                self.getLabels(): labels,
+                self.getKeepProb(): keepProb,
+                self.getBatchSize(): len(images),
+            }
+        else:
+            return {
+                self.getImages(): images,
+                self.getLabels(): labels,
+                self.getKeepProb(): keepProb,
+                self.getBatchSize(): len(images),
+                self.getPhaseTrain(): is_training
+            }
+
 ## in Memory Dataset
 class InMemoryDataset():
     def __init__(self, images, labels, testImages, testLabels, batch_size, acc_batch_size):
@@ -220,8 +165,6 @@ class InMemoryDataset():
         else:
             return len(self.images)
 
-    
-# all data version
 def calcAccuracy(sess, op, phs,dataset, isTest = False):
     acc_sum = 0
     for i in dataset.getAccuracyLoop(isTest):
@@ -232,7 +175,6 @@ def calcAccuracy(sess, op, phs,dataset, isTest = False):
         ))
     return acc_sum / dataset.getAccuracyLen(isTest)
 
-# model tutrials image cifar10_multi_gpu_train.py
 def average_gradients(tower_grads):
   average_grads = []
   # 各variableに対して
@@ -253,7 +195,7 @@ def average_gradients(tower_grads):
   return average_grads
 
 ## FIXME: make parameter class. not use FLAGS
-def multiGpuLearning(learning_rate, phs, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, wscale):
+def multiGpuLearning(learning_rate, phs, imageSize, numRGBChannel, conv2dList, numClasses, wscale):
     debug = tf.constant(1)
     with tf.device('/cpu:0'):
         global_step = tf.get_variable(
@@ -263,25 +205,23 @@ def multiGpuLearning(learning_rate, phs, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList
         logitsList = []
         towerGrads = []
         xtuneArray = None
-        opt = tf.train.AdamOptimizer(learning_rate, beta1=0.9, beta2=0.999)
+        opt = tf.train.AdamOptimizer(learning_rate)
 
         reuseVar = False
         with tf.variable_scope(tf.get_variable_scope()):
             # FIXME config.num_gpu
             for gpu_id in range(0, config.num_gpu):
                 # print("GPU ID:" +str(gpu_id))
-                # data must batch_size == len(phs.getImages())
                 in_batch_length = tf.div(phs.getBatchSize(), config.num_gpu)
                 in_batch_start = tf.multiply(in_batch_length, gpu_id)
                 slice_start = [in_batch_start, 0]
-                slicedImagePh = tf.slice(phs.getImages(), slice_start, [in_batch_length, IMAGE_SIZE * IMAGE_SIZE* NUM_RGB_CHANNEL])
-                slicedLabelPh = tf.slice(phs.getLabels(), slice_start, [in_batch_length, NUM_CLASSES])
+                slicedImagePh = tf.slice(phs.getImages(), slice_start, [in_batch_length, imageSize[0] * imageSize[1]* numRGBChannel])
+                slicedLabelPh = tf.slice(phs.getLabels(), slice_start, [in_batch_length, numClasses])
                 with tf.device("/gpu:"+str(gpu_id)):
                     with tf.name_scope("tower_"+str(gpu_id)):
-                        logits, tuneArray = inference(slicedImagePh, phs.getKeepProb(), IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, wscale, reuseVar)
+                        logits, tuneArray = inference(slicedImagePh, phs.getKeepProb(), imageSize, numRGBChannel, conv2dList, wscale, reuseVar, phs.getPhaseTrain())
                         # 1回目はinferenceでreuse(参照)しない。
                         # 2回目以降はreuse(参照)する。
-                        # Adam(scope外) は reuse = Falseが必要。
                         reuseVar = True
                         if xtuneArray is None:
                             xtuneArray = tuneArray
