@@ -1,0 +1,2 @@
+set CUDA_VISIBLE_DEVICES=%1%
+echo "gpu set %CUDA_VISIBLE_DEVICES%;"

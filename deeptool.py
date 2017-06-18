@@ -1,7 +1,9 @@
 import os
+import shutil
+
 import cv2
 import numpy as np
-import shutil
+import tensorflow as tf
 
 def loadImages(labelFilePath, imageSize, numClass):
     file = open(labelFilePath, 'r')
@@ -73,17 +75,23 @@ def detectFace(filename, cascade_file = "haarcascade_frontalface_default.xml"):
                                      minNeighbors = 5,
                                      minSize = (32, 32))
     ret = []
+    ret2 = []
     for face in faces:
         x, y , w, h = face
         ret.append(image[y:y+h, x:x+w])
+        ret2.append(face)
     return ret
 
 def getFace(imagePaths, imageSize):
     targets = []
+    real_image = []
+    faces = []
     for i in range(0, len(imagePaths)):
-        for img in detectFace(imagePaths[i]):
+        for img, face in detectFace(imagePaths[i]):
+            real_image.append(img)
             targets.append(makeImage(img, imageSize))
-    return np.asarray(targets)
+            faces.append(face)
+    return (np.asarray(targets), real_image, faces)
 
 def backup(modelFile, backupDir, suffix = ""):
     cwd = os.getcwd()
@@ -104,3 +112,13 @@ def listDir(dir):
             continue;
         ret.append(os.path.join(dir, file))
     return ret
+
+def makeSess(flags, config, mgpu = False):
+    if flags.gpuMemory == "":
+        sess = tf.Session()
+    else:
+        gpuConfig = tf.ConfigProto(
+            gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=flags.gpuMemry),
+            device_count={'GPU': config.num_gpu})
+        sess = tf.Session(config=gpuConfig)
+    return sess

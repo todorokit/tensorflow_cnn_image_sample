@@ -49,9 +49,9 @@ if __name__ == '__main__':
         conv2dList[0].filter_size =[1, filterSize, filterSize, 1]
         conv2dList[0].channel = channel
         with tf.Graph().as_default(), tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
-            phs = modelcnn.Placeholders(IMAGE_SIZE, NUM_RGB_CHANNEL, NUM_CLASSES)
+            phs = modelcnn.Placeholders(IMAGE_SIZE, NUM_RGB_CHANNEL, NUM_CLASSES, True)
             dataset = modelcnn.InMemoryDataset(train_image, train_label, [], [], FLAGS.batch_size, FLAGS.acc_batch_size)
-            train_op, acc_op, _, debug = modelcnn.multiGpuLearning(learningRate, phs, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, WSCALE)
+            train_op, acc_op, _, debug = modelcnn.multiGpuLearning(learningRate, phs, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, WSCALE, phs.getPhaseTrain())
 
             sess.run(tf.global_variables_initializer())
             
@@ -63,7 +63,8 @@ if __name__ == '__main__':
                     sess.run(train_op, feed_dict=phs.getDict(
                         dataset.getTrainImage(i),
                         dataset.getTrainLabel(i),
-                        0.5
+                        0.5,
+                        True
                     ))
             accuracy = modelcnn.calcAccuracy(sess, acc_op, phs, dataset)
 

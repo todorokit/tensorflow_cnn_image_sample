@@ -1,3 +1,4 @@
+import sys, re
 from pprint import pprint
 
 import tensorflow as tf
@@ -60,6 +61,9 @@ class Conv2D(Layer):
 # this can use only single gpu
 class Conv2D_bn(Layer):
     def __init__(self, name, channel,  filter_size=(3, 3), strides=(1, 1), padding='VALID'):
+        if re.search("mgpu.py", sys.argv[0]):
+            print("Conv2D_bn cannot use multi gpu enviroment.")
+            exit()
         self.name    = name
         self.channel = channel
         self.filter_size   = filter_size

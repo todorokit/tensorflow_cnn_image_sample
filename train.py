@@ -28,6 +28,7 @@ flags.DEFINE_integer('acc_batch_size', 1860, 'Accuracy batch size. Take care of 
 flags.DEFINE_float('learning_rate', 1e-4, 'Initial learning rate.')
 flags.DEFINE_string('is_continue', "", 'Initial learning rate.')
 flags.DEFINE_string('is_best', "", 'Initial learning rate.')
+flags.DEFINE_string('gpuMemory', "", 'Initial learning rate.')
 
 def getBest():
     path = os.path.join("best-model", "score.txt")
@@ -49,7 +50,7 @@ def writeBest(sess, saver, score):
         fp.write(str(score))
         fp.close()
 
-if __name__ == '__main__':
+def main(_):
     train_image, train_label, _ = deeptool.loadImages(FLAGS.train, IMAGE_SIZE, NUM_CLASSES)
     test_image, test_label, _ =  deeptool.loadImages(FLAGS.test, IMAGE_SIZE, NUM_CLASSES)
     
@@ -63,7 +64,7 @@ if __name__ == '__main__':
         acc_op = modelcnn.accuracy(logits, phs.getLabels())
 
         saver = tf.train.Saver()
-        sess = tf.Session()
+        sess = deeptool.makeSess(FLAGS, config)
         sess.run(tf.global_variables_initializer())
         if FLAGS.is_continue != "":
             saver = tf.train.Saver()
@@ -93,3 +94,5 @@ if __name__ == '__main__':
 #            summary_writer.add_summary(summary_str, step)
 
     save_path = saver.save(sess, os.path.join(cwd, config.modelFile))
+
+tf.app.run()

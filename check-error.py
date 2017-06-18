@@ -32,8 +32,9 @@ if __name__ == '__main__':
     images_placeholder = tf.placeholder("float", shape=(None, IMAGE_SIZE[0]*IMAGE_SIZE[1]*NUM_RGB_CHANNEL))
     labels_placeholder = tf.placeholder("float", shape=(None, NUM_CLASSES))
     keep_prob = tf.placeholder("float")
+    phaseTrain = tf.placeholder(tf.bool, name='phase_train')
 
-    logits, _ = modelcnn.inference(images_placeholder, keep_prob, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, wscale)
+    logits, _ = modelcnn.inference(images_placeholder, keep_prob, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, wscale, False, phaseTrain)
 
     sess = tf.Session()
     saver = tf.train.Saver()
@@ -46,7 +47,7 @@ if __name__ == '__main__':
     ngs = []
     stat = {}
     for image, label, path in zip(test_image, test_label, paths):
-        arr = sess.run(logits, feed_dict={images_placeholder: [image],keep_prob: 1.0})[0]
+        arr = sess.run(logits, feed_dict={images_placeholder: [image],keep_prob: 1.0, phaseTrain: False})[0]
         labelVal = top1(label)[0]
         topVal = top1(arr)[0]
         score = arr[topVal]

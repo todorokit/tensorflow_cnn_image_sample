@@ -14,32 +14,47 @@ IMAGE_SIZE = config.IMAGE_SIZE
 NUM_RGB_CHANNEL = config.NUM_RGB_CHANNEL
 conv2dList=config.conv2dList
 wscale = config.WSCALE
+phaseTrain = tf.placeholder(tf.bool, name='phase_train')
+
+flags = tf.app.flags
+FLAGS = flags.FLAGS
+
+# 速いけど、gpuの邪魔したくない
+flags.DEFINE_integer('use_cpu', 1, 'using cpu')
 
 def top5(arr):
     return arr.argsort()[-5:][::-1]
 
+class WithNone:
+    def __enter__(self): pass
+    def __exit__(self,t,v,tb): pass
+
 # multi gpu 化する意味は全くない。
-if __name__ == '__main__':
-    test_image, test_image_real, _ = deeptool.getAnimeFace(sys.argv[1:], IMAGE_SIZE)
+def main(args):
+    test_image, test_image_real, _ = deeptool.getAnimeFace(args[1:], IMAGE_SIZE)
 
     keep_prob = tf.constant(1.0)
     images_placeholder = tf.placeholder("float", shape=(None, IMAGE_SIZE[0]*IMAGE_SIZE[1]*NUM_RGB_CHANNEL))
     labels_placeholder = tf.placeholder("float", shape=(None, NUM_CLASSES))
-
-    logits, _ = modelcnn.inference(images_placeholder, keep_prob, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, wscale)
+    
+    with WithNone() if FLAGS.use_cpu == 0 else tf.device("/cpu:0"):
+        logits, _ = modelcnn.inference(images_placeholder, keep_prob, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, wscale, False, phaseTrain)
     sess = tf.InteractiveSession()
-
+    
     saver = tf.train.Saver()
     sess.run(tf.global_variables_initializer())
     cwd = os.getcwd()
     saver.restore(sess, os.path.join(cwd, config.modelFile))
-
+    
     for i in range(len(test_image)):
         image = test_image[i]
         real_image = test_image_real[i]
-#        cv2.imwrite(os.path.join(cwd, "debug%d.png")% (i), real_image);
-        arr = logits.eval(feed_dict={images_placeholder: [image]})[0]
+    #        cv2.imwrite(os.path.join(cwd, "debug%d.png")% (i), real_image);
+        arr = logits.eval(feed_dict={images_placeholder: [image], phaseTrain:False})[0]
         indices = top5(arr)
         print ("----- %02d ----" % (i))
         for j in indices:
             print("%s %g" %(config2.classList[j] , arr[j]))
+
+tf.app.run()
+                

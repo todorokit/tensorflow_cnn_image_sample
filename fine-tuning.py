@@ -43,11 +43,12 @@ if __name__ == '__main__':
 
     ## --------------------------------
     ## restore
-    images_placeholder = tf.placeholder("float", shape=(None, IMAGE_SIZE*IMAGE_SIZE*NUM_RGB_CHANNEL))
+    images_placeholder = tf.placeholder("float", shape=(None, IMAGE_SIZE[0]*IMAGE_SIZE[1]*NUM_RGB_CHANNEL))
     labels_placeholder = tf.placeholder("float", shape=(None, NUM_CLASSES))
+    phaseTrain = tf.placeholder(tf.bool, name='phase_train')
 
     # tuneArrayにNUM_CLASSESに関わる変数は入らない。
-    logits, tuneArray = modelcnn.inference(images_placeholder, keep_prob, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, WSCALE, False)
+    logits, tuneArray = modelcnn.inference(images_placeholder, keep_prob, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, WSCALE, False, phaseTrain)
     loss_value = modelcnn.loss(logits, labels_placeholder)
     train_op = modelcnn.training(loss_value, 1e-4)
 
@@ -64,5 +65,7 @@ if __name__ == '__main__':
     sess.run(train_op, feed_dict={
         images_placeholder: train_image[0:1],
         labels_placeholder: train_label[0:1],
-        keep_prob: 0.5})
+        keep_prob: 0.5,
+        phaseTrain: True
+    })
     save_path = saver.save(sess, modelpath)
