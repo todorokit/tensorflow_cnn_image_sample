@@ -57,7 +57,7 @@ if __name__ == '__main__':
     with tf.Graph().as_default():
         phs = modelcnn.Placeholders(IMAGE_SIZE, NUM_RGB_CHANNEL, NUM_CLASSES, True)
         dataset = modelcnn.InMemoryDataset(train_image, train_label, test_image, test_label, FLAGS.batch_size, FLAGS.acc_batch_size)
-        logits, _ = modelcnn.inference2(phs.getImages(), phs.getKeepProb(), IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, WSCALE, False, phs.getPhaseTrain())
+        logits, _ = modelcnn.inference(phs.getImages(), phs.getKeepProb(), IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, WSCALE, False, phs.getPhaseTrain())
         loss_value = modelcnn.loss(logits, phs.getLabels())
         train_op = modelcnn.training(loss_value, FLAGS.learning_rate)
         acc_op = modelcnn.accuracy(logits, phs.getLabels())

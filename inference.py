@@ -37,7 +37,6 @@ if __name__ == '__main__':
     for i in range(len(test_image)):
         image = test_image[i]
         real_image = test_image_real[i]
-        print(_)
 #        cv2.imwrite(os.path.join(cwd, "debug%d.png")% (i), real_image);
         arr = logits.eval(feed_dict={images_placeholder: [image]})[0]
         indices = top5(arr)

@@ -23,17 +23,41 @@ class Layer():
             tuneArray.append(v)
         return v
 
-class MaxPooling2D(Layer):
+class Pooling2D(Layer):
     def __init__(self, name, pool_size=(3, 3), strides=(2, 2), padding='VALID'):
         self.name    = name
         self.ksize   = [1, pool_size[0], pool_size[1], 1]
         self.strides = [1, strides[0], strides[1], 1]
         self.padding = padding
-
+    
+class MaxPooling2D(Pooling2D):
     def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse):
         with tf.name_scope(self.name) as scope:
             return tf.nn.max_pool(h, ksize=self.ksize, strides=self.strides, padding=self.padding)
 
+class AveragePooling2D(Pooling2D):
+    def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse):
+        with tf.name_scope(self.name) as scope:
+            return tf.nn.average_pool(h, ksize=self.ksize, strides=self.strides, padding=self.padding)
+        
+class Conv2D(Layer):
+    def __init__(self, name, channel,  filter_size=(3, 3), strides=(1, 1), padding='VALID'):
+        self.name    = name
+        self.channel = channel
+        self.filter_size   = filter_size
+        self.strides = [1, strides[0], strides[1], 1]
+        self.padding = padding
+
+    def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse):
+        with tf.name_scope(self.name) as scope:
+            with tf.variable_scope(self.name+"_var", reuse = reuse) as vscope:
+                prevChannel = h.shape[3]
+                W = self.weight_variable(tuneArray, [self.filter_size[0], self.filter_size[1], prevChannel, self.channel], wscale)
+                b = self.bias_variable(tuneArray, [self.channel])
+                h = tf.nn.conv2d(h, W, strides=self.strides, padding=self.padding) + b
+                return tf.nn.relu(h)
+
+# this can use only single gpu
 class Conv2D_bn(Layer):
     def __init__(self, name, channel,  filter_size=(3, 3), strides=(1, 1), padding='VALID'):
         self.name    = name
@@ -42,25 +66,37 @@ class Conv2D_bn(Layer):
         self.strides = [1, strides[0], strides[1], 1]
         self.padding = padding
 
-    def batch_norm_wrapper(self, tuneArray, inputs, phase_train=None, decay=0.99):
-        epsilon = 1e-5
-        out_dim = inputs.get_shape()[-1]
-        beta = self.makeVar("beta", [out_dim], initializer=tf.zeros_initializer())
-        gamma = self.makeVar("gamma", [out_dim], initializer=tf.ones_initializer())
-# 学習と推論で完全に別のロジックが動くと問題あり。
-#        if phase_train is None:
-#            return tf.nn.batch_normalization(inputs, tf.zeros([out_dim]), tf.ones([out_dim]), beta, gamma, epsilon)
-        batch_mean, batch_var = tf.nn.moments(inputs, [0,1,2])
-        return tf.nn.batch_normalization(inputs, batch_mean, batch_var, beta, gamma, epsilon)
+    def batch_norm(self, tuneArray, x, is_training, decay=0.9, eps=1e-5):
+      shape = x.get_shape().as_list()
+      assert len(shape) in [2, 4]
+    
+      n_out = shape[-1]
+      beta = tf.Variable(tf.zeros([n_out]))
+      gamma = tf.Variable(tf.ones([n_out]))
+    
+      if len(shape) == 2:
+        batch_mean, batch_var = tf.nn.moments(x, [0])
+      else:
+        batch_mean, batch_var = tf.nn.moments(x, [0, 1, 2])
+    
+      ema = tf.train.ExponentialMovingAverage(decay=decay)
+    
+      def mean_var_with_update():
+        ema_apply_op = ema.apply([batch_mean, batch_var])
+        with tf.control_dependencies([ema_apply_op]):
+          return tf.identity(batch_mean), tf.identity(batch_var)
+      mean, var = tf.cond(is_training, mean_var_with_update,
+                          lambda : (ema.average(batch_mean), ema.average(batch_var)))
+      return tf.nn.batch_normalization(x, mean, var, beta, gamma, eps)
 
     def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse):
         with tf.name_scope(self.name) as scope:
             with tf.variable_scope(self.name+"_var", reuse = reuse) as vscope:
                 prevChannel = h.shape[3]
                 W = self.weight_variable(tuneArray, [self.filter_size[0], self.filter_size[1], prevChannel, self.channel], wscale)
-#                b = self.bias_variable(tuneArray, [self.channel])
-                h = tf.nn.conv2d(h, W, strides=self.strides, padding=self.padding)
-                h = self.batch_norm_wrapper(tuneArray, h, phaseTrain)
+                b = self.bias_variable(tuneArray, [self.channel])
+                h = tf.nn.conv2d(h, W, strides=self.strides, padding=self.padding) + b
+                h = self.batch_norm(tuneArray, h, phaseTrain)
                 return tf.nn.relu(h)
 
 class Flatten(Layer):
@@ -99,3 +135,20 @@ class FullConnect(Layer):
                 W = self.weight_variable(None, [prevChannel, self.numClasses], wscale)
                 b = self.bias_variable(None, [self.numClasses])
                 return self.activationProc(tf.matmul(h, W) + b)
+
+class Concat(Layer):
+    def __init__(self, name, *layers):
+        self.name = name
+        self.layersList = layers
+
+    def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse):
+
+        results = []
+        for layers in self.layersList:
+            h_in = h
+            for layer in layers:
+                #        print(klass.name)
+                #        print(h.shape)
+                h_in = layer.apply(tuneArray, h_in, wscale, phaseTrain, keepProb, reuse)
+            results.append(h_in)
+        return tf.concat(*results)
