@@ -3,6 +3,8 @@ train.txt
 train
 test.txt
 test
+valid.txt
+valid
 img
 backup
 backup2

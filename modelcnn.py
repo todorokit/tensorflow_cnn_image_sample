@@ -104,19 +104,24 @@ class InMemoryDataset():
         self.numAccuracyLoop = n//self.acc_batch_size
         self.splitedAccuracyImage = []
         self.splitedAccuracyLabel = []
+        batch = None
         for i in range(self.numAccuracyLoop):
             batch = self.acc_batch_size * i
             #print(batch, batch+self.acc_batch_size)
             self.splitedAccuracyImage.append(self.images[batch:batch+self.acc_batch_size])
             self.splitedAccuracyLabel.append(self.labels[batch:batch+self.acc_batch_size])
 
-        batch = batch + self.acc_batch_size
+        if batch is None:
+            batch = 0
+        else:
+            batch = batch + self.acc_batch_size
         if batch != n:
             self.numAccuracyLoop += 1
             #print(batch, n)
             self.splitedAccuracyImage.append(self.images[batch:n])
             self.splitedAccuracyLabel.append(self.labels[batch:n])
 
+        batch = None
         n = len(self.testImages)
         self.numTestAccuracyLoop = n //self.acc_batch_size
         self.splitedTestAccuracyImage = []
@@ -126,12 +131,15 @@ class InMemoryDataset():
             #print(batch, batch+self.acc_batch_size)
             self.splitedTestAccuracyImage.append(self.testImages[batch:batch+self.acc_batch_size])
             self.splitedTestAccuracyLabel.append(self.testLabels[batch:batch+self.acc_batch_size])
-        batch = batch + self.acc_batch_size
+        if batch is None:
+            batch = 0
+        else:
+            batch = batch + self.acc_batch_size
         if batch != n:
             self.numTestAccuracyLoop += 1
             #print(batch, n)
-            self.splitedTestAccuracyImage.append(self.images[batch:n])
-            self.splitedTestAccuracyLabel.append(self.labels[batch:n])
+            self.splitedTestAccuracyImage.append(self.testImages[batch:n])
+            self.splitedTestAccuracyLabel.append(self.testLabels[batch:n])
 
     def getAccBatchSize(self):
         return self.acc_batch_size

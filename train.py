@@ -9,7 +9,6 @@ import tensorflow.python.platform
 
 import config, deeptool, modelcnn
 
-
 NUM_CLASSES = config.NUM_CLASSES
 IMAGE_SIZE = config.IMAGE_SIZE
 NUM_RGB_CHANNEL = config.NUM_RGB_CHANNEL
@@ -20,7 +19,8 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('train', 'train.txt', 'File name of train data')
-flags.DEFINE_string('test', 'test.txt', 'File name of train data')
+flags.DEFINE_string('test', 'test.txt', 'File name of many valid data')
+flags.DEFINE_string('valid', 'valid.txt', 'File name of valid data')
 flags.DEFINE_string('train_dir', 'c:\\tmp\\image_cnn', 'Directory to put the training data.')
 flags.DEFINE_integer('max_steps', 100, 'Number of steps to run trainer.')
 flags.DEFINE_integer('batch_size', 20, 'Training batch size. This must divide evenly into the train dataset sizes.')
@@ -29,7 +29,9 @@ flags.DEFINE_float('learning_rate', 1e-4, 'Initial learning rate.')
 flags.DEFINE_string('is_continue', "", 'Initial learning rate.')
 flags.DEFINE_string('is_best', "", 'Initial learning rate.')
 flags.DEFINE_string('gpuMemory', "", 'Initial learning rate.')
-
+print ("------------GPU DEVICES----------------")
+print (os.environ["CUDA_VISIBLE_DEVICES"])
+print ("---------------------------------------")
 def getBest():
     path = os.path.join("best-model", "score.txt")
     if os.path.exists(path):
@@ -53,11 +55,18 @@ def writeBest(sess, saver, score):
 def main(_):
     train_image, train_label, _ = deeptool.loadImages(FLAGS.train, IMAGE_SIZE, NUM_CLASSES)
     test_image, test_label, _ =  deeptool.loadImages(FLAGS.test, IMAGE_SIZE, NUM_CLASSES)
-    
+    if os.path.exists(FLAGS.valid):
+        valid_image, valid_label, _ =  deeptool.loadImages(FLAGS.valid, IMAGE_SIZE, NUM_CLASSES)
+    else:
+        valid_image, valid_label = (None , None)
+        
     cwd = os.getcwd()
     with tf.Graph().as_default():
         phs = modelcnn.Placeholders(IMAGE_SIZE, NUM_RGB_CHANNEL, NUM_CLASSES, True)
+        if valid_image is not None:
+            dataset_valid = modelcnn.InMemoryDataset([], [], valid_image, valid_label, FLAGS.batch_size, FLAGS.acc_batch_size)
         dataset = modelcnn.InMemoryDataset(train_image, train_label, test_image, test_label, FLAGS.batch_size, FLAGS.acc_batch_size)
+            
         logits, _ = modelcnn.inference(phs.getImages(), phs.getKeepProb(), IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, WSCALE, False, phs.getPhaseTrain())
         loss_value = modelcnn.loss(logits, phs.getLabels())
         train_op = modelcnn.training(loss_value, FLAGS.learning_rate)
@@ -84,11 +93,15 @@ def main(_):
                     True
                 ))
 
+            if valid_image is not None:
+                valid_accuracy = modelcnn.calcAccuracy(sess, acc_op, phs, dataset_valid, isTest = True)
+            else:
+                valid_accuracy = 0
             train_accuracy = modelcnn.calcAccuracy(sess, acc_op, phs, dataset)
             test_accuracy = modelcnn.calcAccuracy(sess, acc_op, phs, dataset, isTest = True)
             writeBest(sess,saver,test_accuracy)
 
-            print("step %d, training accuracy %g, test accuracy %g, %g data/sec"%(step, train_accuracy, test_accuracy, n/(time.time() - startTime)))
+            print("step %d, train: %g, test: %g, valid: %g, %g data/sec"%(step, train_accuracy, test_accuracy, valid_accuracy, n/(time.time() - startTime)))
             sys.stdout.flush()
 #            summary_str = sess.run(summary_op, feed_dict=feedDictNoProb)
 #            summary_writer.add_summary(summary_str, step)

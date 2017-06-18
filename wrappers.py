@@ -3,13 +3,18 @@ from pprint import pprint
 
 import tensorflow as tf
 import tensorflow.python.platform
+import config
 
 class Layer():
     # 1 gpu の場合、cpuに保存しない方が速い。multi gpu の場合, cpu側のメモリに保存しなくてはならない
     def makeVar(self, name, shape, initializer, trainable=True):
-        with tf.device('/cpu:0'):
+        # FIXME: darty hack . Use DIContainer.
+        if re.search("mgpu.py", sys.argv[0]):
             var = tf.get_variable(name, shape, initializer=initializer, trainable=trainable)
-            return var
+        else:
+            with tf.device('/cpu:0'):
+                var = tf.get_variable(name, shape, initializer=initializer, trainable=trainable)
+        return var
 
     def weight_variable(self, tuneArray, shape, wscale= 0.1):
         #      print (shape, wscale)

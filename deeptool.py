@@ -1,9 +1,11 @@
-import os
+import os, re
 import shutil
 
 import cv2
 import numpy as np
 import tensorflow as tf
+
+import config2
 
 def loadImages(labelFilePath, imageSize, numClass):
     file = open(labelFilePath, 'r')
@@ -11,7 +13,15 @@ def loadImages(labelFilePath, imageSize, numClass):
     label = []
     paths = []
     for line in file:
-        imgpath, labelIndex= line.rstrip().split()
+        line = line.rstrip()
+        match = re.search(r"^valid\\(\w+)\\[\w.-]+$", line)
+        if match:
+            imgpath = line
+            className = match.group(1)
+            labelIndex = [k for (k, v) in config2.classList.items() if v == className][0]
+        else:
+            imgpath, labelIndex = line.split()
+        
         img = cv2.imread(imgpath)
         if img is None:
             continue

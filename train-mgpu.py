@@ -25,6 +25,9 @@ flags.DEFINE_integer('acc_batch_size', 930, 'Accuracy batch size. This must divi
 flags.DEFINE_float('learning_rate', 1e-4, 'Initial learning rate.')
 flags.DEFINE_string('is_continue', "", 'Initial learning rate.')
 flags.DEFINE_string('is_best', "", 'Initial learning rate.')
+print ("------------GPU DEVICES----------------")
+print (os.environ["CUDA_VISIBLE_DEVICES"])
+print ("---------------------------------------")
 
 def getBest():
     path = os.path.join("best-model", "score.txt")
