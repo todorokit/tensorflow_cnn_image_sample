@@ -10,10 +10,10 @@ class Layer():
     def makeVar(self, name, shape, initializer, trainable=True):
         # FIXME: darty hack . Use DIContainer.
         if re.search("mgpu.py", sys.argv[0]):
-            var = tf.get_variable(name, shape, initializer=initializer, trainable=trainable)
-        else:
             with tf.device('/cpu:0'):
                 var = tf.get_variable(name, shape, initializer=initializer, trainable=trainable)
+        else:
+            var = tf.get_variable(name, shape, initializer=initializer, trainable=trainable)
         return var
 
     def weight_variable(self, tuneArray, shape, wscale= 0.1):

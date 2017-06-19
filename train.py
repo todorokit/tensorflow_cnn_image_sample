@@ -7,13 +7,7 @@ from pprint import pprint
 import tensorflow as tf
 import tensorflow.python.platform
 
-import config, deeptool, modelcnn
-
-NUM_CLASSES = config.NUM_CLASSES
-IMAGE_SIZE = config.IMAGE_SIZE
-NUM_RGB_CHANNEL = config.NUM_RGB_CHANNEL
-conv2dList=config.conv2dList
-WSCALE=config.WSCALE
+import deeptool, modelcnn
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -22,15 +16,28 @@ flags.DEFINE_string('train', 'train.txt', 'File name of train data')
 flags.DEFINE_string('test', 'test.txt', 'File name of many valid data')
 flags.DEFINE_string('valid', 'valid.txt', 'File name of valid data')
 flags.DEFINE_string('train_dir', 'c:\\tmp\\image_cnn', 'Directory to put the training data.')
-flags.DEFINE_integer('max_steps', 100, 'Number of steps to run trainer.')
-flags.DEFINE_integer('batch_size', 20, 'Training batch size. This must divide evenly into the train dataset sizes.')
+flags.DEFINE_integer('max_steps', 300, 'Number of steps to run trainer.')
+flags.DEFINE_integer('batch_size', 80, 'Training batch size. This must divide evenly into the train dataset sizes.')
 flags.DEFINE_integer('acc_batch_size', 1860, 'Accuracy batch size. Take care of memory limit.')
 flags.DEFINE_float('learning_rate', 1e-4, 'Initial learning rate.')
 flags.DEFINE_string('is_continue', "", 'Initial learning rate.')
 flags.DEFINE_string('is_best', "", 'Initial learning rate.')
 flags.DEFINE_string('gpuMemory', "", 'Initial learning rate.')
+flags.DEFINE_string('config', "config", 'Initial learning rate.')
+
+config = __import__(FLAGS.config)
+
+NUM_CLASSES = config.NUM_CLASSES
+IMAGE_SIZE = config.IMAGE_SIZE
+NUM_RGB_CHANNEL = config.NUM_RGB_CHANNEL
+conv2dList=config.conv2dList
+WSCALE=config.WSCALE
+
 print ("------------GPU DEVICES----------------")
-print (os.environ["CUDA_VISIBLE_DEVICES"])
+try:
+    print (os.environ["CUDA_VISIBLE_DEVICES"])
+except:
+    print ("all gpu (default)")
 print ("---------------------------------------")
 def getBest():
     path = os.path.join("best-model", "score.txt")

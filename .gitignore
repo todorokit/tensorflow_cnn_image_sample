@@ -12,8 +12,7 @@ best-model
 checkpoint
 map.py
 debug*
-config.py
-config2.py
+config*
 out.txt
 model.*
 haarcascade_frontalface_default.xml
