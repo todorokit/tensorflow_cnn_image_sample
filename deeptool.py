@@ -103,10 +103,10 @@ def getFace(imagePaths, imageSize):
             faces.append(face)
     return (np.asarray(targets), real_image, faces)
 
-def backup(modelFile, backupDir, suffix = ""):
+def backup(configFileName, modelFile, backupDir, suffix = ""):
     cwd = os.getcwd()
     
-    files = [modelFile+".data-00000-of-00001", modelFile + ".index", modelFile + ".meta", "checkpoint", "config.py"]
+    files = [modelFile+".data-00000-of-00001", modelFile + ".index", modelFile + ".meta", "checkpoint", configFileName]
 
     backupDirPath=os.path.join(cwd, backupDir)
     os.makedirs(backupDirPath, exist_ok=True)
@@ -124,11 +124,11 @@ def listDir(dir):
     return ret
 
 def makeSess(flags, config, mgpu = False):
-    if flags.gpuMemory == "":
+    if flags.gpuMemory == 0.0:
         sess = tf.Session()
     else:
         gpuConfig = tf.ConfigProto(
-            gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=flags.gpuMemry),
+            gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=flags.gpuMemory),
             device_count={'GPU': config.num_gpu})
         sess = tf.Session(config=gpuConfig)
     return sess

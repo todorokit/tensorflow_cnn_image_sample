@@ -14,7 +14,7 @@ map.py
 debug*
 config*
 out.txt
-model.*
+model*
 haarcascade_frontalface_default.xml
 lbpcascade_animeface.xml
 result*

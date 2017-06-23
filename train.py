@@ -13,17 +13,17 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('train', 'train.txt', 'File name of train data')
-flags.DEFINE_string('test', 'test.txt', 'File name of many valid data')
-flags.DEFINE_string('valid', 'valid.txt', 'File name of valid data')
+flags.DEFINE_string('test', 'test.txt', 'File name of valid data')
+flags.DEFINE_string('valid', 'valid.txt', 'File name of valid data (little data)')
 flags.DEFINE_string('train_dir', 'c:\\tmp\\image_cnn', 'Directory to put the training data.')
-flags.DEFINE_integer('max_steps', 300, 'Number of steps to run trainer.')
+flags.DEFINE_integer('max_steps', 1000, 'Number of steps to run trainer.')
 flags.DEFINE_integer('batch_size', 80, 'Training batch size. This must divide evenly into the train dataset sizes.')
-flags.DEFINE_integer('acc_batch_size', 1860, 'Accuracy batch size. Take care of memory limit.')
+flags.DEFINE_integer('acc_batch_size', 80, 'Accuracy batch size. Take care of memory limit.')
 flags.DEFINE_float('learning_rate', 1e-4, 'Initial learning rate.')
 flags.DEFINE_string('is_continue', "", 'Initial learning rate.')
 flags.DEFINE_string('is_best', "", 'Initial learning rate.')
-flags.DEFINE_string('gpuMemory', "", 'Initial learning rate.')
-flags.DEFINE_string('config', "config", 'Initial learning rate.')
+flags.DEFINE_float('gpuMemory', 0.0, 'Using gpu memory in %.')
+flags.DEFINE_string('config', "config", 'config module(file) name (no extension).')
 
 config = __import__(FLAGS.config)
 
@@ -40,7 +40,7 @@ except:
     print ("all gpu (default)")
 print ("---------------------------------------")
 def getBest():
-    path = os.path.join("best-model", "score.txt")
+    path = os.path.join("best-model", config.scoreFileName)
     if os.path.exists(path):
         fp = open(path, "r")
         score = fp.read().replace("\n", "")
@@ -53,8 +53,8 @@ def writeBest(sess, saver, score):
     if (FLAGS.is_best != "" and getBest() < score):
         cwd = os.getcwd()
         save_path = saver.save(sess, os.path.join(cwd, config.modelFile))
-        deeptool.backup(config.modelFile, "best-model")
-        path = os.path.join("best-model", "score.txt")
+        deeptool.backup(FLAGS.config+".py", config.modelFile, "best-model")
+        path = os.path.join("best-model", config.scoreFileName)
         fp = open(path, "w")
         fp.write(str(score))
         fp.close()

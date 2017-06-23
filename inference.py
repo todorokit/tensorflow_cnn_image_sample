@@ -2,12 +2,22 @@
 #! -*- coding: utf-8 -*-
 
 import os, sys
+from contextlib import contextmanager
 
 import tensorflow as tf
 import cv2
 
-import config, config2
+import config2
 import deeptool, modelcnn
+
+flags = tf.app.flags
+FLAGS = flags.FLAGS
+
+# 速いけど、gpuの邪魔したくない
+flags.DEFINE_integer('use_cpu', 0, 'using cpu')
+flags.DEFINE_string('config', "config", 'config module(file) name (no extension).')
+print(FLAGS.config)
+config = __import__(FLAGS.config)
 
 NUM_CLASSES = config.NUM_CLASSES
 IMAGE_SIZE = config.IMAGE_SIZE
@@ -16,18 +26,12 @@ conv2dList=config.conv2dList
 wscale = config.WSCALE
 phaseTrain = tf.placeholder(tf.bool, name='phase_train')
 
-flags = tf.app.flags
-FLAGS = flags.FLAGS
-
-# 速いけど、gpuの邪魔したくない
-flags.DEFINE_integer('use_cpu', 1, 'using cpu')
-
 def top5(arr):
     return arr.argsort()[-5:][::-1]
 
-class WithNone:
-    def __enter__(self): pass
-    def __exit__(self,t,v,tb): pass
+@contextmanager
+def WithNone():
+    yield
 
 # multi gpu 化する意味は全くない。
 def main(args):

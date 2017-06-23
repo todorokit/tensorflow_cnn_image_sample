@@ -3,9 +3,10 @@ from pprint import pprint
 
 import tensorflow as tf
 import tensorflow.python.platform
-import config
 
-class Layer():
+# name を このclassに持ってくる。
+class Layer(object):
+    
     # 1 gpu の場合、cpuに保存しない方が速い。multi gpu の場合, cpu側のメモリに保存しなくてはならない
     def makeVar(self, name, shape, initializer, trainable=True):
         # FIXME: darty hack . Use DIContainer.
@@ -44,8 +45,19 @@ class MaxPooling2D(Pooling2D):
 class AveragePooling2D(Pooling2D):
     def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse):
         with tf.name_scope(self.name) as scope:
-            return tf.nn.average_pool(h, ksize=self.ksize, strides=self.strides, padding=self.padding)
-        
+            return tf.nn.avg_pool(h, ksize=self.ksize, strides=self.strides, padding=self.padding)
+
+class GlobalAveragePooling2D(Layer):
+    def __init__(self, name, data_format="channels_last"):
+        self.name = name
+        self.data_format = data_format
+
+    def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse):
+        if self.data_format == 'channels_last':
+            return tf.reduce_mean(h, reduction_indices=[1, 2])
+        else:
+            return tf.reduce_mean(h, reduction_indices=[2, 3])
+
 class Conv2D(Layer):
     def __init__(self, name, channel,  filter_size=(3, 3), strides=(1, 1), padding='VALID'):
         self.name    = name
@@ -65,7 +77,7 @@ class Conv2D(Layer):
 
 # this can use only single gpu
 class Conv2D_bn(Layer):
-    def __init__(self, name, channel,  filter_size=(3, 3), strides=(1, 1), padding='VALID'):
+    def __init__(self, name, channel,  filter_size=(3, 3), strides=(1, 1), padding='VALID', useBias = False):
         if re.search("mgpu.py", sys.argv[0]):
             print("Conv2D_bn cannot use multi gpu enviroment.")
             exit()
@@ -74,6 +86,7 @@ class Conv2D_bn(Layer):
         self.filter_size   = filter_size
         self.strides = [1, strides[0], strides[1], 1]
         self.padding = padding
+        self.useBias = useBias
 
     def batch_norm(self, tuneArray, x, is_training, decay=0.9, eps=1e-5):
       shape = x.get_shape().as_list()
@@ -103,8 +116,11 @@ class Conv2D_bn(Layer):
             with tf.variable_scope(self.name+"_var", reuse = reuse) as vscope:
                 prevChannel = h.shape[3]
                 W = self.weight_variable(tuneArray, [self.filter_size[0], self.filter_size[1], prevChannel, self.channel], wscale)
-                b = self.bias_variable(tuneArray, [self.channel])
-                h = tf.nn.conv2d(h, W, strides=self.strides, padding=self.padding) + b
+                if self.useBias:
+                    b = self.bias_variable(tuneArray, [self.channel])
+                    h = tf.nn.conv2d(h, W, strides=self.strides, padding=self.padding) + b
+                else:
+                    h = tf.nn.conv2d(h, W, strides=self.strides, padding=self.padding)
                 h = self.batch_norm(tuneArray, h, phaseTrain)
                 return tf.nn.relu(h)
 
@@ -146,18 +162,21 @@ class FullConnect(Layer):
                 return self.activationProc(tf.matmul(h, W) + b)
 
 class Concat(Layer):
-    def __init__(self, name, *layers):
+    def __init__(self, *layers, name = None, axis = 3):
         self.name = name
         self.layersList = layers
+        self.axis = axis
 
     def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse):
-
         results = []
         for layers in self.layersList:
+            # print("-- concat layer loop ("+self.name+") --")
             h_in = h
             for layer in layers:
-                #        print(klass.name)
-                #        print(h.shape)
+                # print(layer.name)
+                # print(h_in.shape)
                 h_in = layer.apply(tuneArray, h_in, wscale, phaseTrain, keepProb, reuse)
+            # print("output")
+            # print(h_in.shape)
             results.append(h_in)
-        return tf.concat(*results)
+        return tf.concat(results, self.axis, name=self.name)

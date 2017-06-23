@@ -4,6 +4,7 @@ from pprint import pprint
 import tensorflow as tf
 import tensorflow.python.platform
 
+# fixme
 import config
 
 def inference(imagePh, keepProb, imageSize, numInitChannel, conv2dList, wscale, reuse = False, phaseTrain = None):
