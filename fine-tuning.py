@@ -15,7 +15,14 @@ import os, sys, os.path, datetime
 
 import tensorflow as tf
 
-import config, deeptool, modelcnn
+import deeptool, modelcnn
+
+flags = tf.app.flags
+FLAGS = flags.FLAGS
+
+flags.DEFINE_string('train', 'train.txt', 'File name of train data')
+flags.DEFINE_string('config', "config", 'config module(file) name (no extension).')
+config = __import__(FLAGS.config)
 
 WSCALE = config.WSCALE
 
@@ -28,16 +35,11 @@ modelFile = config.modelFile
 cwd = os.getcwd()
 modelpath = os.path.join(cwd, modelFile)
 
-flags = tf.app.flags
-FLAGS = flags.FLAGS
-
-flags.DEFINE_string('train', 'train.txt', 'File name of train data')
-
 if __name__ == '__main__':
     ## --------------------------------
     # backup
     now = datetime.datetime.today().strftime("%Y%m%d%H%M%S")
-    deeptool.backup(modelFile, "backup", now)
+    deeptool.backup(FLAGS.config+".py", modelFile, "backup", now)
 
     keep_prob = tf.placeholder("float")
 

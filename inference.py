@@ -16,7 +16,6 @@ FLAGS = flags.FLAGS
 # 速いけど、gpuの邪魔したくない
 flags.DEFINE_integer('use_cpu', 0, 'using cpu')
 flags.DEFINE_string('config', "config", 'config module(file) name (no extension).')
-print(FLAGS.config)
 config = __import__(FLAGS.config)
 
 NUM_CLASSES = config.NUM_CLASSES
@@ -36,6 +35,10 @@ def WithNone():
 # multi gpu 化する意味は全くない。
 def main(args):
     test_image, test_image_real, _ = deeptool.getAnimeFace(args[1:], IMAGE_SIZE)
+    if (len(test_image) == 0 ):
+        test_image, test_image_real, _ = deeptool.getFace(args[1:], IMAGE_SIZE)
+    if (len(test_image) == 0 ):
+        test_image, test_image_real, _ = deeptool.getImage(args[1:], IMAGE_SIZE)
 
     keep_prob = tf.constant(1.0)
     images_placeholder = tf.placeholder("float", shape=(None, IMAGE_SIZE[0]*IMAGE_SIZE[1]*NUM_RGB_CHANNEL))

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os, sys, time
+import os, sys, time, datetime
 from pprint import pprint
 
 import tensorflow as tf
@@ -108,7 +108,9 @@ def main(_):
             test_accuracy = modelcnn.calcAccuracy(sess, acc_op, phs, dataset, isTest = True)
             writeBest(sess,saver,test_accuracy)
 
-            print("step %d, train: %g, test: %g, valid: %g, %g data/sec"%(step, train_accuracy, test_accuracy, valid_accuracy, n/(time.time() - startTime)))
+            todaydetail  = datetime.datetime.today()
+            timestr = todaydetail.strftime("%H:%M:%S")
+            print("%s: step %d, train: %g, test: %g, valid: %g, %g data/sec"%(timestr, step, train_accuracy, test_accuracy, valid_accuracy, n/(time.time() - startTime)))
             sys.stdout.flush()
 #            summary_str = sess.run(summary_op, feed_dict=feedDictNoProb)
 #            summary_writer.add_summary(summary_str, step)

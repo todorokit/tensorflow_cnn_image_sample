@@ -51,7 +51,7 @@ def detectAnimeFace(filename, cascade_file = "lbpcascade_animeface.xml"):
     faces = cascade.detectMultiScale(gray,
                                      scaleFactor = 1.1,
                                      minNeighbors = 5,
-                                     minSize = (64, 64))
+                                     minSize = (73, 73))
     ret = []
     ret2 = []
     for face in faces:
@@ -83,14 +83,14 @@ def detectFace(filename, cascade_file = "haarcascade_frontalface_default.xml"):
     faces = cascade.detectMultiScale(gray,
                                      scaleFactor = 1.1,
                                      minNeighbors = 5,
-                                     minSize = (32, 32))
+                                     minSize = (73, 73))
     ret = []
     ret2 = []
     for face in faces:
         x, y , w, h = face
         ret.append(image[y:y+h, x:x+w])
         ret2.append(face)
-    return ret
+    return zip(ret, ret2)
 
 def getFace(imagePaths, imageSize):
     targets = []
@@ -103,6 +103,17 @@ def getFace(imagePaths, imageSize):
             faces.append(face)
     return (np.asarray(targets), real_image, faces)
 
+def getImage(imagePaths, imageSize):
+    targets = []
+    real_image = []
+    faces = []
+    for i in range(0, len(imagePaths)):
+        img = cv2.imread(imagePaths[i])
+        real_image.append(img)
+        targets.append(makeImage(img, imageSize))
+        faces.append([])
+    return (np.asarray(targets), real_image, faces)
+    
 def backup(configFileName, modelFile, backupDir, suffix = ""):
     cwd = os.getcwd()
     
