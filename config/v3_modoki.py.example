@@ -112,3 +112,7 @@ WSCALE=math.sqrt(2.0/NUM_CLASSES)
 modelFile = "model_v3.ckpt"
 scoreFileName = "score_v3.ckpt"
 num_gpu = 2
+
+trainFile = "train.txt"
+testFile = "test.txt"
+validFile = "valid.txt"

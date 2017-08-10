@@ -6,41 +6,33 @@ import time
 import tensorflow as tf
 import tensorflow.python.platform
 
-import config
-import config2
-import deeptool
 import modelcnn
+from util.Container import Container
+from util.utils import *
+from util import image as imgModule
+from config.classes import classList
 
+config = Container.get("config")
 NUM_CLASSES = config.NUM_CLASSES
 IMAGE_SIZE = config.IMAGE_SIZE
 NUM_RGB_CHANNEL = config.NUM_RGB_CHANNEL
-conv2dList=config.conv2dList
-wscale = config.WSCALE
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('test', 'test.txt', 'File name of train data')
-flags.DEFINE_string('train_dir', 'c:\\tmp\\image_cnn', 'Directory to put the training data.')
-
-def top1(arr):
-    return arr.argsort()[-1:][::-1]
-
 if __name__ == '__main__':
-    test_image, test_label, paths =  deeptool.loadImages(FLAGS.test, IMAGE_SIZE, NUM_CLASSES)
+    test_image, test_label, paths =  imgModule.loadImages(config.testFile, IMAGE_SIZE, NUM_CLASSES)
     
     images_placeholder = tf.placeholder("float", shape=(None, IMAGE_SIZE[0]*IMAGE_SIZE[1]*NUM_RGB_CHANNEL))
     labels_placeholder = tf.placeholder("float", shape=(None, NUM_CLASSES))
     keep_prob = tf.placeholder("float")
     phaseTrain = tf.placeholder(tf.bool, name='phase_train')
 
-    logits, _ = modelcnn.inference(images_placeholder, keep_prob, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, wscale, False, phaseTrain)
+    logits, _ = modelcnn.inference(images_placeholder, keep_prob, config, False, phaseTrain)
 
-    sess = tf.Session()
-    saver = tf.train.Saver()
-    sess.run(tf.global_variables_initializer())
+    sess = Container.get("sess")
+    saver = Container.get("saver")
     cwd = os.getcwd()
-    saver.restore(sess, os.path.join(cwd, config.modelFile))
 
     oks = []
     lowscores = []
@@ -48,16 +40,16 @@ if __name__ == '__main__':
     stat = {}
     for image, label, path in zip(test_image, test_label, paths):
         arr = sess.run(logits, feed_dict={images_placeholder: [image],keep_prob: 1.0, phaseTrain: False})[0]
-        labelVal = top1(label)[0]
-        topVal = top1(arr)[0]
+        labelVal = top1(label)
+        topVal = top1(arr)
         score = arr[topVal]
         if (topVal == labelVal):
             if ( score < 0.5) :
-                lowscores.append((path ,config2.classList[topVal], score))
+                lowscores.append((path ,classList[topVal], score))
             else:
-                oks.append((path ,config2.classList[topVal], score))
+                oks.append((path ,classList[topVal], score))
         else:
-            ngs.append((path, config2.classList[labelVal], config2.classList[topVal], score))
+            ngs.append((path, classList[labelVal], classList[topVal], score))
             try:
                 stat[labelVal] = stat[labelVal] + 1
             except:
@@ -94,7 +86,7 @@ if __name__ == '__main__':
 
     trs = []
     for label in stat:
-        trs.append("<tr><td>%s</td><td>%d</td></tr>" % (config2.classList[label], stat[label]))
+        trs.append("<tr><td>%s</td><td>%d</td></tr>" % (classList[label], stat[label]))
     statstr = "".join(trs)
     print("""
     <html><body>

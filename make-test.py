@@ -8,7 +8,7 @@ sourceDir = 'img'
 
 trFile = 'train.txt'
 teFile = 'test.txt'
-mapFile = 'config2.py'
+mapFile = 'config/classes.py'
 
 if len(sys.argv) != 3:
     print ("usage %s trainNum testNum" % (sys.argv[0]))

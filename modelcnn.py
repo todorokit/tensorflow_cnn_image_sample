@@ -1,20 +1,21 @@
-import sys, re
-from pprint import pprint
-
 import tensorflow as tf
 import tensorflow.python.platform
 
-# fixme
-import config
+flags = tf.app.flags
+flags.DEFINE_string('config', "config.xv3", 'config module(file) name (no extension).')
 
-def inference(imagePh, keepProb, imageSize, numInitChannel, conv2dList, wscale, reuse = False, phaseTrain = None):
+def inference(imagePh, keepProb, config, reuse = False, phaseTrain = None, freeze = False):
     tuneArray = []
+    imageSize = config.IMAGE_SIZE
+    numInitChannel = config.NUM_RGB_CHANNEL
+    conv2dList = config.conv2dList
+    wscale = config.WSCALE
     h = tf.reshape(imagePh, [-1, imageSize[0], imageSize[1], numInitChannel])
 
     for layer in conv2dList:
 #        print(klass.name)
 #        print(h.shape)
-        h = layer.apply(tuneArray, h, wscale, phaseTrain, keepProb, reuse)
+        h = layer.apply(tuneArray, h, wscale, phaseTrain, keepProb, reuse, freeze)
     return (h, tuneArray)
 
 def loss(logits, labels):
@@ -22,19 +23,22 @@ def loss(logits, labels):
 #    tf.summary.scalar("cross_entropy", cross_entropy)
     return cross_entropy
 
-def training(loss, learning_rate):
-    train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
-    return train_step
-
 def accuracy(logits, labels):
     correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))
     accuracy = tf.reduce_sum(tf.cast(correct_prediction, "float"))
     return accuracy
 
+def compile(images, labels, keepProb, isTrain, config, learning_rate = 1e-4):
+    logits, _ = inference(images, keepProb, config, False, isTrain)
+    loss_value = loss(logits, labels)
+    train_op = tf.train.AdamOptimizer(learning_rate).minimize(loss_value)
+    acc_op = accuracy(logits, labels)
+    return (train_op, acc_op)
+
 class Placeholders():
-    def __init__(self, imageSize, numChannel, numClasses, is_training = False):
-        self.imagesPh = tf.placeholder("float", shape=(None, imageSize[0]*imageSize[1]*numChannel))
-        self.labelsPh = tf.placeholder("float", shape=(None, numClasses))
+    def __init__(self, config, is_training = False):
+        self.imagesPh = tf.placeholder("float", shape=(None, config.IMAGE_SIZE[0]*config.IMAGE_SIZE[1]*config.NUM_RGB_CHANNEL))
+        self.labelsPh = tf.placeholder("float", shape=(None, config.NUM_CLASSES))
         self.keep_prob = tf.placeholder("float")
         self.batch_size = tf.placeholder("int32")
         self.phase_train = tf.placeholder(tf.bool, name='phase_train') if is_training else None
@@ -71,119 +75,6 @@ class Placeholders():
                 self.getPhaseTrain(): is_training
             }
 
-## in Memory Dataset
-class InMemoryDataset():
-    def __init__(self, images, labels, testImages, testLabels, batch_size, acc_batch_size):
-        self.images = images
-        self.labels = labels
-        self.testImages = testImages
-        self.testLabels = testLabels
-        self.batch_size = batch_size
-        self.acc_batch_size = acc_batch_size
-        self.splitedImage = None
-        self.splitedLabel = None
-        self.splitedAccracyImage = None
-        self.splitedAccracyLabel = None
-        self.splitedTestAccracyImage = None
-        self.splitedTestAccracyLabel = None
-        self.numTrainLoop = 0
-        self.numAccuracyLoop = 0
-        self.numTestAccuracyLoop = 0
-        self.calcBatchImage()
-        
-    def calcBatchImage(self):
-        n = len(self.images)
-        self.numTrainLoop = n // self.batch_size
-        self.splitedImage = []
-        self.splitedLabel = []
-        # train は割り切って下さい
-        for i in range(self.numTrainLoop):
-            batch = self.batch_size * i
-            self.splitedImage.append(self.images[batch:batch+self.batch_size])
-            self.splitedLabel.append(self.labels[batch:batch+self.batch_size])
-
-        self.numAccuracyLoop = n//self.acc_batch_size
-        self.splitedAccuracyImage = []
-        self.splitedAccuracyLabel = []
-        batch = None
-        for i in range(self.numAccuracyLoop):
-            batch = self.acc_batch_size * i
-            #print(batch, batch+self.acc_batch_size)
-            self.splitedAccuracyImage.append(self.images[batch:batch+self.acc_batch_size])
-            self.splitedAccuracyLabel.append(self.labels[batch:batch+self.acc_batch_size])
-
-        if batch is None:
-            batch = 0
-        else:
-            batch = batch + self.acc_batch_size
-        if batch != n:
-            self.numAccuracyLoop += 1
-            #print(batch, n)
-            self.splitedAccuracyImage.append(self.images[batch:n])
-            self.splitedAccuracyLabel.append(self.labels[batch:n])
-
-        batch = None
-        n = len(self.testImages)
-        self.numTestAccuracyLoop = n //self.acc_batch_size
-        self.splitedTestAccuracyImage = []
-        self.splitedTestAccuracyLabel = []
-        for i in range(self.numTestAccuracyLoop):
-            batch = self.acc_batch_size * i
-            #print(batch, batch+self.acc_batch_size)
-            self.splitedTestAccuracyImage.append(self.testImages[batch:batch+self.acc_batch_size])
-            self.splitedTestAccuracyLabel.append(self.testLabels[batch:batch+self.acc_batch_size])
-        if batch is None:
-            batch = 0
-        else:
-            batch = batch + self.acc_batch_size
-        if batch != n:
-            self.numTestAccuracyLoop += 1
-            #print(batch, n)
-            self.splitedTestAccuracyImage.append(self.testImages[batch:n])
-            self.splitedTestAccuracyLabel.append(self.testLabels[batch:n])
-
-    def getAccBatchSize(self):
-        return self.acc_batch_size
-
-    def getTrainLoop(self):
-        return range(self.numTrainLoop)
-    def getTrainImage(self, i):
-        return self.splitedImage[i]
-    def getTrainLabel(self, i):
-        return self.splitedLabel[i]
-
-    def getAccuracyLoop(self, isTest= False):
-        if isTest:
-            return range(self.numTestAccuracyLoop)
-        else:
-            return range(self.numAccuracyLoop)
-    def getAccuracyImage(self, i, isTest = False):
-        if isTest:
-            return self.splitedTestAccuracyImage[i]
-        else:
-            return self.splitedAccuracyImage[i]
-    def getAccuracyLabel(self, i, isTest= False):
-        if isTest:
-            return self.splitedTestAccuracyLabel[i]
-        else:
-            return self.splitedAccuracyLabel[i]
-
-    def getAccuracyLen(self, isTest= False):
-        if isTest:
-            return len(self.testImages)
-        else:
-            return len(self.images)
-
-def calcAccuracy(sess, op, phs,dataset, isTest = False):
-    acc_sum = 0
-    for i in dataset.getAccuracyLoop(isTest):
-        acc_sum += sess.run(op, feed_dict=phs.getDict(
-            dataset.getAccuracyImage(i, isTest),
-            dataset.getAccuracyLabel(i, isTest),
-            1.0
-        ))
-    return acc_sum / dataset.getAccuracyLen(isTest)
-
 def average_gradients(tower_grads):
   average_grads = []
   # 各variableに対して
@@ -204,7 +95,7 @@ def average_gradients(tower_grads):
   return average_grads
 
 ## FIXME: make parameter class. not use FLAGS
-def multiGpuLearning(learning_rate, phs, imageSize, numRGBChannel, conv2dList, numClasses, wscale):
+def multiGpuLearning(config, learning_rate, phs, imageSize, numRGBChannel, conv2dList, numClasses, wscale):
     debug = tf.constant(1)
     with tf.device('/cpu:0'):
         global_step = tf.get_variable(
