@@ -36,3 +36,11 @@ python make-test.py 100 30
 python train.py --config config
 ```
 
+# celebA 対応メモ
+
+* crop するとネクタイ・ネックレス・帽子が見えない可能性が高い
+* inferenceの時と画像切抜きが違う
+* データが片寄っているので大半が-1のデータは-1と予想すれば精度でる。
+* accuracyの計算がsigmoidではなく N個のsoftmax
+* メモリ少ないとデータがメモリに載らない。
+* GPU1つだととんでもなく時間が掛かる。

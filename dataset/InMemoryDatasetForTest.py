@@ -3,7 +3,10 @@ import util.image
 
 class InMemoryDatasetForTest(AbstractDataset):
     def __init__(self, path, config, acc_batch_size):
-        self.images, self.labels, _= util.image.loadImages(path, config.IMAGE_SIZE, config.NUM_CLASSES)
+        if config.dataType == "multiLabel":
+            self.images, self.labels, _= util.image.loadMultiLabelImages(path, config.IMAGE_SIZE, config.NUM_CLASSES_LIST, config.imageResize)
+        else:
+            self.images, self.labels, _= util.image.loadImages(path, config.IMAGE_SIZE, config.NUM_CLASSES)
         self.acc_batch_size = acc_batch_size
         self.splitedAccracyImage = None
         self.splitedAccracyLabel = None

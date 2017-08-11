@@ -24,7 +24,7 @@ flags.DEFINE_integer('batch_size', 40, 'Training batch size. This must divide ev
 flags.DEFINE_integer('acc_batch_size', 930, 'Accuracy batch size. This must divide evenly into the test data set sizes.')
 flags.DEFINE_float('learning_rate', 1e-4, 'Initial learning rate.')
 flags.DEFINE_string('is_continue', "", 'Initial learning rate.')
-flags.DEFINE_string('is_best', "", 'Initial learning rate.')
+flags.DEFINE_string('save_best', "", 'Initial learning rate.')
 print ("------------GPU DEVICES----------------")
 try:
     print (os.environ["CUDA_VISIBLE_DEVICES"])
@@ -59,7 +59,7 @@ if __name__ == '__main__':
     with tf.Graph().as_default():
         phs = modelcnn.Placeholders(IMAGE_SIZE, NUM_RGB_CHANNEL, NUM_CLASSES, True)
         dataset = modelcnn.InMemoryDataset(train_image, train_label, test_image, test_label, FLAGS.batch_size, FLAGS.acc_batch_size)
-        train_op, acc_op, _, debug = modelcnn.multiGpuLearning(FLAGS.learning_rate, phs, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, WSCALE)
+        train_op, acc_op, _, debug = modelcnn.multiGpuLearning(config, FLAGS.learning_rate, phs, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, WSCALE)
 
         saver = tf.train.Saver()
         sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))

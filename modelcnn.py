@@ -28,11 +28,22 @@ def accuracy(logits, labels):
     accuracy = tf.reduce_sum(tf.cast(correct_prediction, "float"))
     return accuracy
 
+def accuracyML(logits, labels, k):
+    logitsK = tf.nn.top_k(logits, k).indices
+    labelsK = tf.nn.top_k(labels, k).indices
+    accuracy = tf.size(tf.sets.set_intersection(logitsK,labelsK).values)
+    return tf.cast(accuracy, "float") / float(k)
+
 def compile(images, labels, keepProb, isTrain, config, learning_rate = 1e-4):
     logits, _ = inference(images, keepProb, config, False, isTrain)
     loss_value = loss(logits, labels)
     train_op = tf.train.AdamOptimizer(learning_rate).minimize(loss_value)
-    acc_op = accuracy(logits, labels)
+    if config.dataType == "multiLabel":
+        k = len(config.NUM_CLASSES_LIST)
+        acc_op = accuracyML(logits, labels, k)
+#        acc_op = loss_value
+    else:
+        acc_op = accuracy(logits, labels)
     return (train_op, acc_op)
 
 class Placeholders():

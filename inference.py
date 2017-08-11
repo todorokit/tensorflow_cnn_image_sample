@@ -41,7 +41,10 @@ def main(args):
         real_image = test_image_real[i]
     #        cv2.imwrite(os.path.join(cwd, "debug%d.png")% (i), real_image);
         arr = sess.run(logits, feed_dict={images_placeholder: [image], phaseTrain:False})[0]
-        indices = top5(arr)
+        if config.dataType == "multiLabel":
+            indices = sess.run(tf.nn.top_k(arr, len(config.NUM_CLASSES_LIST)).indices)
+        else:
+            indices = top5(arr)
         print ("----- %02d ----" % (i))
         for j in indices:
             print("%s %g" %(classList[j] , arr[j]))

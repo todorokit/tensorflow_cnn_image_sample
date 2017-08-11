@@ -29,3 +29,11 @@ WSCALE=math.sqrt(2.0/NUM_CLASSES)
 # multi gpu make same model.ckpt
 modelFile = "model.ckpt"
 num_gpu = 2
+
+imageResize = "resize"
+dataType = "label"
+
+
+trainFile = "train.txt"
+testFile = "test.txt"
+validFile = "valid.txt"

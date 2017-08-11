@@ -5,6 +5,39 @@ import numpy as np
 
 import config.classes
 
+def loadMultiLabelImages(labelFilePath, imageSize, numClassList, imsgeResize):
+    file = open(labelFilePath, 'r')
+    image = []
+    label = []
+    paths = []
+    numClass = sum(numClassList)
+    loop = 0
+    for line in file:
+        line = line.rstrip()
+        words = line.split()
+        imgpath = words.pop(0)
+        lineLabels = [int(word) for word in words]
+        
+        img = cv2.imread(imgpath)
+        if img is None:
+            continue
+        img = makeImage(img, imageSize, imsgeResize)
+        image.append(img)
+        labelData = np.zeros(numClass)
+        offset = 0
+        for lineLabel, num in zip(lineLabels, numClassList):
+            labelData[offset+lineLabel] = 1
+            offset += num
+        label.append(labelData)
+        paths.append(imgpath)
+
+        loop += 1
+        if loop % 1000 == 0:
+            print("load %d" % (loop,))
+
+    file.close()
+    return (np.asarray(image), np.asarray(label), paths)
+
 def loadImages(labelFilePath, imageSize, numClass):
     file = open(labelFilePath, 'r')
     image = []
@@ -32,12 +65,20 @@ def loadImages(labelFilePath, imageSize, numClass):
     file.close()
     return (np.asarray(image), np.asarray(label), paths)
 
-def makeImage(img, imageSize):
-    img = cv2.resize(img, (imageSize[0], imageSize[1]))
+def makeImage(img, imageSize, resize = "resize"):
+    if resize == "resize":
+        img = cv2.resize(img, (imageSize[0], imageSize[1]))
+    elif resize == "crop":
+        h, w, c = img.shape
+        y = (h - imageSize[1]) // 2
+        x = (w - imageSize[0]) // 2
+        img = img[y:y+imageSize[1], x:x+imageSize[0]]
+    else:
+        raise Exception("invalid resize type")
     return img.flatten().astype(np.float32)/255.0
 
 # https://github.com/nagadomi/lbpcascade_animeface
-def detectAnimeFace(filename, cascade_file = "lbpcascade_animeface.xml"):
+def detectAnimeFace(filename, imageSize = (73,73), cascade_file = "lbpcascade_animeface.xml"):
     if not os.path.isfile(cascade_file):
         raise RuntimeError("%s: not found" % cascade_file)
 
@@ -49,7 +90,7 @@ def detectAnimeFace(filename, cascade_file = "lbpcascade_animeface.xml"):
     faces = cascade.detectMultiScale(gray,
                                      scaleFactor = 1.1,
                                      minNeighbors = 5,
-                                     minSize = (304, 304))
+                                     minSize = imageSize)
     ret = []
     ret2 = []
     for face in faces:
@@ -63,13 +104,13 @@ def getAnimeFace(imagePaths, imageSize):
     real_image = []
     faces = []
     for i in range(0, len(imagePaths)):
-        for img, face in detectAnimeFace(imagePaths[i]):
+        for img, face in detectAnimeFace(imagePaths[i], imageSize):
             real_image.append(img)
             targets.append(makeImage(img, imageSize))
             faces.append(face)
     return (np.asarray(targets), real_image, faces)
 
-def detectFace(filename, cascade_file = "haarcascade_frontalface_default.xml"):
+def detectFace(filename, imageSize = (73,73), cascade_file = "haarcascade_frontalface_default.xml"):
     if not os.path.isfile(cascade_file):
         raise RuntimeError("%s: not found" % cascade_file)
 
@@ -81,7 +122,7 @@ def detectFace(filename, cascade_file = "haarcascade_frontalface_default.xml"):
     faces = cascade.detectMultiScale(gray,
                                      scaleFactor = 1.1,
                                      minNeighbors = 5,
-                                     minSize = (73, 73))
+                                     minSize = imageSize)
     ret = []
     ret2 = []
     for face in faces:
@@ -95,7 +136,7 @@ def getFace(imagePaths, imageSize):
     real_image = []
     faces = []
     for i in range(0, len(imagePaths)):
-        for img, face in detectFace(imagePaths[i]):
+        for img, face in detectFace(imagePaths[i], imageSize):
             real_image.append(img)
             targets.append(makeImage(img, imageSize))
             faces.append(face)
