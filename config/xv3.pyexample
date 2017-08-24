@@ -32,7 +32,8 @@ num_gpu = 2
 
 imageResize = "resize"
 dataType = "label"
-
+accuracy = None
+faceType = "anime"
 
 trainFile = "train.txt"
 testFile = "test.txt"

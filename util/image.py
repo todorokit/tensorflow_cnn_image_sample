@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 
 import config.classes
+from config import baseConfig
 
 def loadMultiLabelImages(labelFilePath, imageSize, numClassList, imsgeResize):
     file = open(labelFilePath, 'r')
@@ -45,7 +46,7 @@ def loadImages(labelFilePath, imageSize, numClass):
     paths = []
     for line in file:
         line = line.rstrip()
-        match = re.search(r"^valid\\(\w+)\\[\w.-]+$", line)
+        match = re.search(r"^valid[/\\](\w+)[/\\][\w.-]+$", line)
         if match:
             imgpath = line
             className = match.group(1)
@@ -75,7 +76,7 @@ def makeImage(img, imageSize, resize = "resize"):
         img = img[y:y+imageSize[1], x:x+imageSize[0]]
     else:
         raise Exception("invalid resize type")
-    return img.flatten().astype(np.float32)/255.0
+    return img.flatten().astype(baseConfig.npFloatSize)/255.0
 
 # https://github.com/nagadomi/lbpcascade_animeface
 def detectAnimeFace(filename, imageSize = (73,73), cascade_file = "lbpcascade_animeface.xml"):
@@ -121,7 +122,7 @@ def detectFace(filename, imageSize = (73,73), cascade_file = "haarcascade_fronta
     
     faces = cascade.detectMultiScale(gray,
                                      scaleFactor = 1.1,
-                                     minNeighbors = 5,
+                                     minNeighbors = 1,
                                      minSize = imageSize)
     ret = []
     ret2 = []

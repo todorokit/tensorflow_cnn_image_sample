@@ -1,13 +1,29 @@
 import os, sys, re, random
 
-NUM_IMAGE=202599
+#NUM_IMAGE=202599
+NUM_IMAGE=196451
 
 trainFile="train.txt"
 testFile="test.txt"
-attrFile = "d:\\data\\celeba\\list_attr_celeba.txt"
-imageDir = "d:\\data\\celeba\\img_align_celeba"
-trainNum = 30000
-testNum  = 5000
+attrFile = "/media/data/data/celeba/list_attr_celeba.txt"
+imageDir = "/media/data/data/celeba/img_73"
+if len(sys.argv) >= 2 and sys.argv[1].isnumeric():
+    trainNum = int(sys.argv[1])
+else:
+    trainNum = 160000
+if len(sys.argv) >= 3 and sys.argv[2].isnumeric():
+    testNum = int(sys.argv[2])
+else:
+    testNum  = 30000
+
+def find(dir, dirs):
+    ret = dirs
+    for file in os.listdir(dir):
+        if file == "." or file == "..":
+            continue
+        realfile = file
+        ret.append(realfile)
+    return ret
 
 def main(trainNum, testNum):
     attrFp = open(attrFile, "r")
@@ -26,24 +42,23 @@ def main(trainNum, testNum):
                 classes[ix*2] = "not " + word
                 classes[ix*2+1] = word
                 ix += 1
-            fp = open("config\\classes.py", "w")
+            fp = open(os.path.join("config", "classes.py"), "w")
             fp.write("classList = {}\n")
             for ix in classes:
                 fp.write("classList[%d] = \"%s\"\n" % (ix, classes[ix]))
-            
-    lis = list(range(NUM_IMAGE))
+
+
+    lis = find(imageDir, [])
     random.shuffle(lis)
     fp = open(trainFile, "w")
     for i in range(trainNum):
-        id = lis.pop()+1
-        file = "%06d.jpg" % (id,)
+        file = lis.pop()
         fp.write(os.path.join(imageDir, "%s %s\n" % (file, attr[file]) ))
     fp.close()
 
     fp = open(testFile, "w")
     for i in range(testNum):
-        id = lis.pop()+1
-        file = "%06d.jpg" % (id,)
+        file = lis.pop()
         fp.write(os.path.join(imageDir, "%s %s\n" % (file, attr[file]) ))
     fp.close()
 

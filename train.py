@@ -35,7 +35,7 @@ def main(_):
         for epoch in range(FLAGS.epoch):
             timer = MyTimer()
             trainDataset.train(sess, train_op, phs)
-            train_accuracy = trainDataset.calcAccuracy(sess, acc_op, phs)
+#            train_accuracy = trainDataset.calcAccuracy(sess, acc_op, phs)
             test_accuracy = testDataset.calcAccuracy(sess, acc_op, phs)
             valid_accuracy = 0
             if validDataset is not None:
@@ -43,9 +43,9 @@ def main(_):
             
             saveBest(config, FLAGS, sess, saver, test_accuracy)
 
-            print("%s: epoch %d, (%g, %g, %g), %g data/sec"%(timer.getNow("%H:%M:%S"), epoch, train_accuracy, test_accuracy, valid_accuracy, trainDataset.getLen()/timer.getTime()))
+            # train_accuracy, 
+            print("%s: epoch %d, (%g, %g), %g data/sec"%(timer.getNow("%H:%M:%S"), epoch, test_accuracy, valid_accuracy, trainDataset.getLen()/timer.getTime()))
             sys.stdout.flush()
-            
-        saver.save()
+            saver.save()
 
 tf.app.run()

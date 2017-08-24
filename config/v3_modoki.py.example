@@ -111,10 +111,12 @@ conv2dList = [
 WSCALE=math.sqrt(2.0/NUM_CLASSES)
 modelFile = "model_v3.ckpt"
 scoreFileName = "score_v3.ckpt"
-num_gpu = 1
+num_gpu = 2
 
 imageResize = "resize"
 dataType = "label"
+accuracy = None
+faceType = "anime"
 
 trainFile = "train.txt"
 testFile = "test.txt"

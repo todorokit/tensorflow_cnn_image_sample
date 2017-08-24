@@ -4,17 +4,20 @@ from pprint import pprint
 import tensorflow as tf
 import tensorflow.python.platform
 
+from config import baseConfig
+
 # name を このclassに持ってくる。
 class Layer(object):
     
     # 1 gpu の場合、cpuに保存しない方が速い。multi gpu の場合, cpu側のメモリに保存しなくてはならない
     def makeVar(self, name, shape, initializer, trainable=True):
-        # FIXME: darty hack . Use DIContainer.
+        #print(name+" " + str(shape) + " "+  str(trainable))
+        # FIXME: darty hack mgpu
         if re.search("mgpu.py", sys.argv[0]):
             with tf.device('/cpu:0'):
-                var = tf.get_variable(name, shape, initializer=initializer, trainable=trainable)
+                var = tf.get_variable(name, shape, initializer=initializer, trainable=trainable, dtype=baseConfig.floatSize)
         else:
-            var = tf.get_variable(name, shape, initializer=initializer, trainable=trainable)
+            var = tf.get_variable(name, shape, initializer=initializer, trainable=trainable, dtype=baseConfig.floatSize)
         return var
 
     def weight_variable(self, tuneArray, shape, wscale= 0.1, freeze = False):
@@ -85,9 +88,9 @@ class Conv2D(Layer):
 # this can use only single gpu
 class Conv2D_bn(Layer):
     def __init__(self, name, channel,  filter_size=(3, 3), strides=(1, 1), padding='VALID', useBias = False):
-        if re.search("mgpu.py", sys.argv[0]):
-            print("Conv2D_bn cannot use multi gpu enviroment.")
-            exit()
+#        if re.search("mgpu.py", sys.argv[0]):
+#            print("Conv2D_bn cannot use multi gpu enviroment.")
+#            exit()
         self.name    = name
         self.channel = channel
         self.filter_size   = filter_size
@@ -100,14 +103,16 @@ class Conv2D_bn(Layer):
       assert len(shape) in [2, 4]
     
       n_out = shape[-1]
-      beta = tf.Variable(tf.zeros([n_out]))
-      gamma = tf.Variable(tf.ones([n_out]))
-    
+      beta = tf.Variable(tf.zeros([n_out], dtype=baseConfig.floatSize), dtype=baseConfig.floatSize)
+      gamma = tf.Variable(tf.ones([n_out], dtype=baseConfig.floatSize), dtype=baseConfig.floatSize)
+      
       if len(shape) == 2:
         batch_mean, batch_var = tf.nn.moments(x, [0])
       else:
         batch_mean, batch_var = tf.nn.moments(x, [0, 1, 2])
-    
+
+      # 平均と分散を出せばいいが、emaが負荷が低いのかな？
+      # 内部で(trainable = False)の変数を使用している。
       ema = tf.train.ExponentialMovingAverage(decay=decay)
     
       def mean_var_with_update():
@@ -128,6 +133,8 @@ class Conv2D_bn(Layer):
                     h = tf.nn.conv2d(h, W, strides=self.strides, padding=self.padding) + b
                 else:
                     h = tf.nn.conv2d(h, W, strides=self.strides, padding=self.padding)
+            with tf.variable_scope(self.name+"_var", reuse = None) as vscope:
+                # reuse = Noneでも良いみたい。trainable = Falseだからかもしれない。
                 h = self.batch_norm(tuneArray, h, phaseTrain)
                 return tf.nn.relu(h)
 

@@ -5,8 +5,8 @@ import os
 from util.utils import *
 from util.MySaver import MySaver
 import modelcnn
-from dataset.InMemoryDataset import InMemoryDataset 
-from dataset.InMemoryDatasetForTest import InMemoryDatasetForTest
+from dataset.OnMemoryDataset import OnMemoryDataset 
+from dataset.OnMemoryDatasetForTest import OnMemoryDatasetForTest
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -67,21 +67,27 @@ class MyFactory(ComponentFactory):
         config = self.container.get("config")
         return modelcnn.compile(phs.getImages(), phs.getLabels(), phs.getKeepProb(), phs.getPhaseTrain(), config)
 
+    def buildOps_Mgpu(self):
+        phs = self.container.get("placeholders")
+        config = self.container.get("config")
+        train_op, acc_op, _, debug = modelcnn.multiGpuLearning(config, phs)
+        return (train_op, acc_op)
+
     def buildTraindataset(self):
         config = self.container.get("config")
         FLAGS = self.container.get("flags")
-        return InMemoryDataset(config.trainFile, config, FLAGS.batch_size, FLAGS.acc_batch_size)
+        return OnMemoryDataset(config.trainFile, config, FLAGS.batch_size, FLAGS.acc_batch_size)
 
     def buildTestdataset(self):
         config = self.container.get("config")
         FLAGS = self.container.get("flags")
-        return InMemoryDatasetForTest(config.testFile, config, FLAGS.acc_batch_size)
+        return OnMemoryDatasetForTest(config.testFile, config, FLAGS.acc_batch_size)
 
     def buildValiddataset(self):
         config = self.container.get("config")
         FLAGS = self.container.get("flags")
         if config.validFile and os.path.exists(config.validFile):
-            validDataset = InMemoryDatasetForTest(config.validFile, config, FLAGS.acc_batch_size)
+            validDataset = OnMemoryDatasetForTest(config.validFile, config, FLAGS.acc_batch_size)
         else:
             validDataset = None
         return validDataset

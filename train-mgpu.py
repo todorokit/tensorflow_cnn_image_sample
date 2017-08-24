@@ -2,92 +2,47 @@
 # -*- coding: utf-8 -*-
 
 import os, sys, time
+
 import tensorflow as tf
 import tensorflow.python.platform
 
-import config, deeptool, modelcnn
-
-NUM_CLASSES = config.NUM_CLASSES
-IMAGE_SIZE = config.IMAGE_SIZE
-NUM_RGB_CHANNEL = config.NUM_RGB_CHANNEL
-conv2dList=config.conv2dList
-WSCALE=config.WSCALE
+from util.Container import Container
+from util.utils import *
+from util.MyTimer import MyTimer
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('train', 'train.txt', 'File name of train data')
-flags.DEFINE_string('test', 'test.txt', 'File name of train data')
-flags.DEFINE_string('train_dir', 'c:\\tmp\\image_cnn', 'Directory to put the training data.')
-flags.DEFINE_integer('max_steps', 100, 'Number of steps to run trainer.')
-flags.DEFINE_integer('batch_size', 40, 'Training batch size. This must divide evenly into the train dataset sizes and config.num_gpu.')
-flags.DEFINE_integer('acc_batch_size', 930, 'Accuracy batch size. This must divide evenly into the test data set sizes.')
-flags.DEFINE_float('learning_rate', 1e-4, 'Initial learning rate.')
-flags.DEFINE_string('is_continue', "", 'Initial learning rate.')
-flags.DEFINE_string('save_best', "", 'Initial learning rate.')
-print ("------------GPU DEVICES----------------")
-try:
-    print (os.environ["CUDA_VISIBLE_DEVICES"])
-except:
-    print ("all gpu (default)")
-print ("---------------------------------------")
+flags.DEFINE_integer('epoch', 1000, 'Number of epoch to run trainer.')
+flags.DEFINE_integer('batch_size', 80, 'Training batch size. This must divide evenly into the train dataset sizes and config.num_gpu.')
+flags.DEFINE_integer('acc_batch_size', 80, 'Accuracy batch size. This must divide evenly into the test data set sizes.')
 
-def getBest():
-    path = os.path.join("best-model", "score.txt")
-    if os.path.exists(path):
-        fp = open(path, "r")
-        score = fp.read().replace("\n", "")
-        fp.close()
-        return float(score)
-    else:
-        return 0.0
+printCUDA_env()
 
-def writeBest(sess, saver, score):
-    if (FLAGS.is_best != "" and getBest() < score):
-        cwd = os.getcwd()
-        save_path = saver.save(sess, os.path.join(cwd, config.modelFile))
-        deeptool.backup(config.modelFile, "best-model")
-        path = os.path.join("best-model", "score.txt")
-        fp = open(path, "w")
-        fp.write(str(score))
-        fp.close()
-
-if __name__ == '__main__':
-    train_image, train_label, _ = deeptool.loadImages(FLAGS.train, IMAGE_SIZE, NUM_CLASSES)
-    test_image, test_label, _ =  deeptool.loadImages(FLAGS.test, IMAGE_SIZE, NUM_CLASSES)
-    cwd = os.getcwd()
+def main(_):
     with tf.Graph().as_default():
-        phs = modelcnn.Placeholders(IMAGE_SIZE, NUM_RGB_CHANNEL, NUM_CLASSES, True)
-        dataset = modelcnn.InMemoryDataset(train_image, train_label, test_image, test_label, FLAGS.batch_size, FLAGS.acc_batch_size)
-        train_op, acc_op, _, debug = modelcnn.multiGpuLearning(config, FLAGS.learning_rate, phs, IMAGE_SIZE, NUM_RGB_CHANNEL, conv2dList, NUM_CLASSES, WSCALE)
+        config = Container.get("config")
+        phs = Container.get("placeholders")
+        train_op, acc_op = Container.get("ops_mgpu")
+        sess = Container.get("sess")
+        saver = Container.get("saver")
 
-        saver = tf.train.Saver()
-        sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
-        sess.run(tf.global_variables_initializer())
-        if FLAGS.is_continue != "":
-            saver.restore(sess, os.path.join(cwd, config.modelFile))
+        trainDataset = Container.get("traindataset")
+        testDataset =  Container.get("testdataset")
+        validDataset =  Container.get("validdataset")
 
-        summary_op = tf.summary.merge_all()
-        summary_writer = tf.summary.FileWriter(FLAGS.train_dir, sess.graph)
-
-        n = len(train_image)
-        for step in range(FLAGS.max_steps):
-            startTime = time.time()
-            for i in dataset.getTrainLoop():
-                sess.run(train_op, feed_dict=phs.getDict(
-                    dataset.getTrainImage(i),
-                    dataset.getTrainLabel(i),
-                    0.5,
-                    True
-                ))
-
-            train_accuracy = modelcnn.calcAccuracy(sess, acc_op, phs, dataset)
-            test_accuracy = modelcnn.calcAccuracy(sess, acc_op, phs, dataset, isTest = True)
-            writeBest(sess,saver,test_accuracy)
-
-            print("step %d, training accuracy %g, test accuracy %g, %g data/sec"%(step, train_accuracy, test_accuracy, n/(time.time() - startTime)))
+        for epoch in range(FLAGS.epoch):
+            timer = MyTimer()
+            trainDataset.train(sess, train_op, phs)
+            # train_accuracy = trainDataset.calcAccuracy(sess, acc_op, phs)
+            test_accuracy = testDataset.calcAccuracy(sess, acc_op, phs)
+            valid_accuracy = 0
+            if validDataset is not None:
+                valid_accuracy = validDataset.calcAccuracy(sess, acc_op, phs)
+            saveBest(config, FLAGS, sess, saver, test_accuracy)
+            # train_accuracy
+            print("%s: epoch %d, (%g, %g), %g data/sec"%(timer.getNow("%H:%M:%S"), epoch, test_accuracy, valid_accuracy, trainDataset.getLen()/timer.getTime()))
             sys.stdout.flush()
-#            summary_str = sess.run(summary_op, feed_dict=feedDictNoProb)
-#            summary_writer.add_summary(summary_str, step)
+            saver.save()
 
-    save_path = saver.save(sess, os.path.join(cwd, config.modelFile))
+tf.app.run()

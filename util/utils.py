@@ -2,6 +2,8 @@ import os, shutil
 
 import tensorflow as tf
 
+from config import baseConfig
+
 flags = tf.app.flags
 flags.DEFINE_float('memory', 0.95, 'Using gpu memory.')
 
@@ -35,8 +37,17 @@ def makeSess(flags):
         sess = tf.Session(config=gpuConfig)
     sess.run(tf.global_variables_initializer())
     return sess
-    
-def saveBest(config, FLAGS, sess, saver, score):
+
+#    memoryが少ないと誤判定 
+#    def buildSess_Inference(self):
+#        return makeSessInference()
+#def makeSessInference():
+#    config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
+#    sess = tf.Session(config=config)
+#    sess.run(tf.global_variables_initializer())
+#    return sess
+
+def saveBest(config, FLAGS, sess, mysaver, score):
     def getBest():
         path = os.path.join("best-model", config.scoreFileName)
         if os.path.exists(path):
@@ -52,9 +63,10 @@ def saveBest(config, FLAGS, sess, saver, score):
         fp.write(str(score))
         fp.close()
         
-    if getBest() < score:
+    if getBest() < float(score):
+        print("Save Best ")
         cwd = os.getcwd()
-        saver.save()
+        mysaver.save()
         backup(deepImportToPath(FLAGS.config), config.modelFile, "best-model")
         writeScore(os.path.join("best-model", config.scoreFileName), score)
 
@@ -86,7 +98,10 @@ def importer(name, root_package=False, relative_globals=None, level=0):
                       level=level)
 
 def deepImportToPath (str) :
-    return str.replace(".", "\\")+".py"
+    if os.name == 'nt':
+        return str.replace(".", "\\")+".py"
+    else:
+        return str.replace(".", "/")+".py"
 
 def top5(arr):
     return arr.argsort()[-5:][::-1]
