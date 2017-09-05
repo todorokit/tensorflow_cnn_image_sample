@@ -59,6 +59,11 @@ class MyFactory(ComponentFactory):
         sess = self.container.get("sess")
         return MySaver(sess, config)
 
+    def buildSaver_No_Restore(self):
+        config = self.container.get("config")
+        sess = self.container.get("sess")
+        return MySaver(sess, config, False)
+    
     def buildPlaceholders(self):
         return modelcnn.Placeholders(self.config, True)
 

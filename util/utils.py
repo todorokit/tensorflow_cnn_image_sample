@@ -5,7 +5,7 @@ import tensorflow as tf
 from config import baseConfig
 
 flags = tf.app.flags
-flags.DEFINE_float('memory', 0.95, 'Using gpu memory.')
+flags.DEFINE_float('memory', 0.90, 'Using gpu memory.')
 
 def backup(configFileName, modelFile, backupDir, suffix = ""):
     cwd = os.getcwd()

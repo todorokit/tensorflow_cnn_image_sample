@@ -38,6 +38,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_integer('epoch', 1000, 'Number of epoch to run trainer.')
 flags.DEFINE_integer('batch_size', 80, 'Training batch size. This must divide evenly into the train dataset sizes.')
 flags.DEFINE_integer('acc_batch_size', 80, 'Accuracy batch size. Take care of memory limit.')
+flags.DEFINE_boolean('freeze', True, 'Number of epoch to run trainer.')
 
 printCUDA_env()
 
@@ -58,7 +59,7 @@ def main(_):
 
         # tuneArrayにFC変数は入らない。その他 EMAの変数等も入らない
         with tf.name_scope("tower_0"):
-            logits, tuneArray = modelcnn.inference(images_placeholder, keep_prob, config, False, phaseTrain, True)
+            logits, tuneArray = modelcnn.inference(images_placeholder, keep_prob, config, False, phaseTrain, FLAGS.freeze)
         loss_value = modelcnn.loss(logits, labels_placeholder)
         train_op = tf.train.AdamOptimizer(0.0001).minimize(loss_value)
         if config.dataType == "multiLabel":
@@ -75,15 +76,15 @@ def main(_):
             acc_op = modelcnn.accuracy(logits, labels_placeholder)
 
         sess = tf.Session()
-        saver = tf.train.Saver(tuneArray)
-        sess.run(tf.global_variables_initializer())
+        saver = tf.train.Saver([v for v in tf.global_variables() if not v.name.startswith("fc")])
+        sess.run(tf.variables_initializer([v for v in tf.global_variables() if v.name.startswith("fc")]))
         saver.restore(sess, modelpath)
 
         trainDataset = Container.get("traindataset")
         testDataset =  Container.get("testdataset")
         validDataset =  Container.get("validdataset")
         # 全ての変数を保存するsaverを用意する
-        mysaver =  Container.get("saver")
+        mysaver =  Container.get("saver_no_restore")
 
         for epoch in range(FLAGS.epoch):
             timer = MyTimer()
