@@ -16,7 +16,7 @@ import os, sys, os.path, datetime
 import tensorflow as tf
 
 import modelcnn
-from util.Container import Container
+from util.Container import getContainer
 from util.utils import *
 from util.MyTimer import MyTimer
 from util import image as imgModule
@@ -35,10 +35,13 @@ modelpath = os.path.join(cwd, modelFile)
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
+flags.DEFINE_string('config', "config.celeba", 'config module(file) name (no extension).')
 flags.DEFINE_integer('epoch', 1000, 'Number of epoch to run trainer.')
 flags.DEFINE_integer('batch_size', 80, 'Training batch size. This must divide evenly into the train dataset sizes.')
 flags.DEFINE_integer('acc_batch_size', 80, 'Accuracy batch size. Take care of memory limit.')
+flags.DEFINE_float('memory', 0.90, 'Using gpu memory.')
 flags.DEFINE_boolean('freeze', True, 'Number of epoch to run trainer.')
+
 
 printCUDA_env()
 
@@ -51,6 +54,7 @@ def main(_):
 
         ## --------------------------------
         ## restore
+        Container = getContainer(FLAGS)
         phs = Container.get("placeholders")
         keep_prob = phs.getKeepProb()
         images_placeholder = phs.getImages()
@@ -62,18 +66,7 @@ def main(_):
             logits, tuneArray = modelcnn.inference(images_placeholder, keep_prob, config, False, phaseTrain, FLAGS.freeze)
         loss_value = modelcnn.loss(logits, labels_placeholder)
         train_op = tf.train.AdamOptimizer(0.0001).minimize(loss_value)
-        if config.dataType == "multiLabel":
-            if isinstance(config.accuracy, tuple):
-                method, arg = config.accuracy
-                if method == "nth":
-                    acc_op = modelcnn.accuracyMLNth(logits, labels_placeholder, arg)
-                else:
-                    raise Exception("config.accuracy is not known")
-            else:
-                k = len(config.NUM_CLASSES_LIST)
-                acc_op = modelcnn.accuracyML(logits, labels_placeholder, k)
-        else:
-            acc_op = modelcnn.accuracy(logits, labels_placeholder)
+        acc_op = modelcnn.getAccuracyOp(logits, labels_placeholder, config)
 
         sess = tf.Session()
         saver = tf.train.Saver([v for v in tf.global_variables() if not v.name.startswith("fc")])

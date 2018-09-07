@@ -8,7 +8,7 @@ import tensorflow as tf
 import tensorflow.python.platform
 
 import modelcnn
-from util.Container import Container
+from util.Container import getContainer
 from util.utils import *
 from util import image as imgModule
 from config.classes import classList
@@ -24,8 +24,12 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('outfile', 'miss.html', 'output html name')
 flags.DEFINE_integer('acc_batch_size', 80, 'Accuracy batch size. Take care of memory limit.')
+flags.DEFINE_float('memory', 0.90, 'Using gpu memory.')
+flags.DEFINE_string('config', "config.celeba", 'config module(file) name (no extension).')
+
 
 def main(_):
+    Container = getContainer(FLAGS)
     testDataset =  Container.get("testdataset")
     
     images_placeholder = tf.placeholder(baseConfig.floatSize, shape=(None, IMAGE_SIZE[0]*IMAGE_SIZE[1]*NUM_RGB_CHANNEL))
@@ -49,16 +53,8 @@ def main(_):
         ix = 0
         arrs = sess.run(logits, feed_dict={images_placeholder: images,keep_prob: 1.0, phaseTrain: False})
         for arr in arrs:
-            if config.dataType == "multiLabel":
-                if isinstance(config.accuracy, tuple):
-                    method, arg = config.accuracy
-                    if method == "nth":
-                        labelVal = top1(labels[ix][arg:arg+2]) + arg
-                        topVal = top1(arr[arg:arg+2]) + arg
-                    else:
-                        raise Exception("config.accuracy is not known")
-                else:
-                    raise Exception("config.accuracy is not known")
+            if config.dataType == "multi-label":
+                raise Exception("multi -label not support")
             else:
                 labelVal = top1(labels[ix])
                 topVal = top1(arr)

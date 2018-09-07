@@ -10,33 +10,36 @@ import cv2
 import numpy
 
 import modelcnn
-from util.Container import Container
+from util.Container import getContainer
 from util.utils import *
 from util import image as imgModule
 from config.classes import classList
 from config import baseConfig
+import dataset.LargeDataset
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
+flags.DEFINE_string('config', "config.celeba", 'config module(file) name (no extension).')
 flags.DEFINE_string('outdir', 'infout', 'output html name')
-flags.DEFINE_integer('batch_size', 80, 'Accuracy batch size. Take care of memory limit.')
+flags.DEFINE_integer('batch_size', 2, 'Accuracy batch size. Take care of memory limit.')
+flags.DEFINE_float('memory', 0.90, 'Using gpu memory.')
 flags.DEFINE_float('other_score', 0.7, '')
 
+Container = getContainer(FLAGS)
 config = Container.get("config")
 
 IMAGE_SIZE= config.IMAGE_SIZE
 NUM_RGB_CHANNEL = config.NUM_RGB_CHANNEL
 NUM_CLASSES = config.NUM_CLASSES
 
-keep_prob = tf.constant(1.0)
-phaseTrain = tf.placeholder(tf.bool, name='phase_train')
-
+phaseTrain = tf.placeholder(tf.bool, name='phaseTrain')
 images_placeholder = tf.placeholder(baseConfig.floatSize, shape=(None, IMAGE_SIZE[0]*IMAGE_SIZE[1]*NUM_RGB_CHANNEL))
 labels_placeholder = tf.placeholder(baseConfig.floatSize, shape=(None, NUM_CLASSES))
+keepProb = tf.placeholder(baseConfig.floatSize, name="keepProb")
 
 with tf.name_scope("tower_0"):
-    logits, _ = modelcnn.inference(images_placeholder, keep_prob, config,  False, phaseTrain)
+    logits, _ = modelcnn.inference(images_placeholder, keepProb, config,  False, phaseTrain)
 sess = Container.get("sess")
 saver = Container.get("saver")
 
@@ -53,7 +56,7 @@ def getImages(path):
     return (test_image, test_image_real, faces)
 
 def inferenceAndSave(batch, images):
-    arrs = sess.run(logits, feed_dict={images_placeholder: images, phaseTrain: False})
+    arrs = sess.run(logits, feed_dict={images_placeholder: images, phaseTrain: False, keepProb: 1.0})
     i = 0
     for arr in arrs:
         k, real_image, path, dir = batch[i]
@@ -127,15 +130,16 @@ def inferenceDir(dir):
         
 def inferenceFile(path):
     test_image, test_image_real, _ = getImages(path)
+    test_image = [dataset.LargeDataset.img2vector(path, config, Container)]
 
     for i in range(len(test_image)):
         image = test_image[i]
-        real_image = test_image_real[i]
-        cv2.imwrite(os.path.join(cwd, "debug%d.png")% (i), real_image);
-        
-        arr = sess.run(logits, feed_dict={images_placeholder: [image], phaseTrain:False})[0]
-        if config.dataType == "multiLabel":
-            indices = sess.run(tf.nn.top_k(arr, len(config.NUM_CLASSES_LIST)).indices)
+#        real_image = cv2.imread(path)
+#        cv2.imwrite(os.path.join(cwd, "debug%d.png")% (i), real_image);
+        arr = sess.run(logits, feed_dict={images_placeholder: [image], phaseTrain:False, keepProb: 1.0})[0]
+        print(arr)
+        if config.dataType == "multi-label":
+            indices = sess.run(tf.nn.top_k(arr, 5).indices)
         else:
             indices = top5(arr)
         print ("----- %02d ----" % (i))

@@ -24,11 +24,7 @@ def loadMultiLabelImages(labelFilePath, imageSize, numClassList, imsgeResize):
             continue
         img = makeImage(img, imageSize, imsgeResize)
         image.append(img)
-        labelData = np.zeros(numClass)
-        offset = 0
-        for lineLabel, num in zip(lineLabels, numClassList):
-            labelData[offset+lineLabel] = 1
-            offset += num
+        labelData = np.astype(lineLabels, dtype=np.int8)
         label.append(labelData)
         paths.append(imgpath)
 
@@ -39,7 +35,7 @@ def loadMultiLabelImages(labelFilePath, imageSize, numClassList, imsgeResize):
     file.close()
     return (np.asarray(image), np.asarray(label), paths)
 
-def loadImages(labelFilePath, imageSize, numClass):
+def loadImages(labelFilePath, imageSize, numClass, imageResize):
     file = open(labelFilePath, 'r')
     image = []
     label = []
@@ -52,12 +48,12 @@ def loadImages(labelFilePath, imageSize, numClass):
             className = match.group(1)
             labelIndex = [k for (k, v) in config.classes.classList.items() if v == className][0]
         else:
-            imgpath, labelIndex = line.split()
+            imgpath, labelIndex = line.split(",")
         
         img = cv2.imread(imgpath)
         if img is None:
             continue
-        img = makeImage(img, imageSize)
+        img = makeImage(img, imageSize, imageResize)
         image.append(img)
         labelData = np.zeros(numClass)
         labelData[int(labelIndex)] = 1
@@ -68,8 +64,9 @@ def loadImages(labelFilePath, imageSize, numClass):
 
 def makeImage(img, imageSize, resize = "resize"):
     if resize == "resize":
-        img = cv2.resize(img, (imageSize[0], imageSize[1]))
+        img = cv2.resize(img, (imageSize[1], imageSize[0]))
     elif resize == "crop":
+        # fixme  pad version
         h, w, c = img.shape
         y = (h - imageSize[1]) // 2
         x = (w - imageSize[0]) // 2
@@ -106,7 +103,7 @@ def getAnimeFace(imagePaths, imageSize):
     faces = []
     for i in range(0, len(imagePaths)):
         for img, face in detectAnimeFace(imagePaths[i], imageSize):
-            real_image.append(img)
+            real_image.append(cv2.imread(imagePaths[i]))
             targets.append(makeImage(img, imageSize))
             faces.append(face)
     return (np.asarray(targets), real_image, faces)

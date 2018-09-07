@@ -4,7 +4,7 @@ import os
 import sys
 import random
 
-sourceDir = 'img'
+sourceDir = '/data/deresute-face'
 
 trFile = 'train.txt'
 teFile = 'test.txt'
@@ -83,9 +83,9 @@ for image in images:
     id = getId(className);
 
     if isTest:
-        teFp.write("%s %d\n" % (image, id));
+        teFp.write("%s,%d\n" % (image, id));
     else:
-        trFp.write("%s %d\n" % (image, id));
+        trFp.write("%s,%d\n" % (image, id));
 
 trFp.close()
 teFp.close()

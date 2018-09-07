@@ -1,12 +1,12 @@
-from dataset.AbstractDataset import AbstractDataset
+from dataset.AbstractOnMemoryDataset import AbstractOnMemoryDataset
 import util.image
 
-class OnMemoryDatasetForTest(AbstractDataset):
+class OnMemoryDatasetForTest(AbstractOnMemoryDataset):
     def __init__(self, path, config, acc_batch_size):
-        if config.dataType == "multiLabel":
+        if config.dataType == "multi-label":
             self.images, self.labels, self.paths= util.image.loadMultiLabelImages(path, config.IMAGE_SIZE, config.NUM_CLASSES_LIST, config.imageResize)
         else:
-            self.images, self.labels, self.paths= util.image.loadImages(path, config.IMAGE_SIZE, config.NUM_CLASSES)
+            self.images, self.labels, self.paths= util.image.loadImages(path, config.IMAGE_SIZE, config.NUM_CLASSES, config.imageResize)
         self.acc_batch_size = acc_batch_size
         self.splitedAccracyImage = None
         self.splitedAccracyLabel = None

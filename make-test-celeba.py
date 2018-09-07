@@ -1,12 +1,11 @@
 import os, sys, re, random
 
 #NUM_IMAGE=202599
-NUM_IMAGE=196451
-
+NUM_IMAGE=195148
 trainFile="train.txt"
 testFile="test.txt"
-attrFile = "/media/data/data/celeba/list_attr_celeba.txt"
-imageDir = "/media/data/data/celeba/img_73"
+attrFile = "/data/celeba/list_attr_celeba.txt"
+imageDir = "/data/celeba/img_align_celeba/"
 if len(sys.argv) >= 2 and sys.argv[1].isnumeric():
     trainNum = int(sys.argv[1])
 else:
@@ -34,7 +33,7 @@ def main(trainNum, testNum):
         if re.search("^\d+.jpg ",line):
             words = line.split(" ")
             file = words.pop(0)
-            attr[file] = " ".join(words).replace("-1", "0")
+            attr[file] = ",".join(words).replace("-1", "0")
         else:
             words = line.split(" ")
             ix = 0
@@ -53,13 +52,13 @@ def main(trainNum, testNum):
     fp = open(trainFile, "w")
     for i in range(trainNum):
         file = lis.pop()
-        fp.write(os.path.join(imageDir, "%s %s\n" % (file, attr[file]) ))
+        fp.write(os.path.join(imageDir, "%s,%s\n" % (file, attr[file]) ))
     fp.close()
 
     fp = open(testFile, "w")
     for i in range(testNum):
         file = lis.pop()
-        fp.write(os.path.join(imageDir, "%s %s\n" % (file, attr[file]) ))
+        fp.write(os.path.join(imageDir, "%s,%s\n" % (file, attr[file]) ))
     fp.close()
 
 main(trainNum, testNum)

@@ -3,17 +3,9 @@ import math
 import tensorflow as tf
 
 from wrappers import Conv2D_bn, MaxPooling2D, AveragePooling2D, Flatten, Dropout, FullConnect, Concat, GlobalAveragePooling2D
+from modelcnn import crossentropy
 
-NUM_CLASSES_LIST = [2, 2, 2, 2, 2,
-		    2, 2, 2, 2, 2,
-		    2, 2, 2, 2, 2,
-		    2, 2, 2, 2, 2,
-		    2, 2, 2, 2, 2,
-		    2, 2, 2, 2, 2,
-		    2, 2, 2, 2, 2,
-		    2, 2, 2, 2, 2]
-
-NUM_CLASSES = sum(NUM_CLASSES_LIST)
+NUM_CLASSES = 40
 IMAGE_SIZE = (73, 73)
 NUM_RGB_CHANNEL = 3
 
@@ -114,23 +106,7 @@ conv2dList = [
     ),
     GlobalAveragePooling2D("gpoold"),
     Dropout(),
-    Concat(
-        [FullConnect("fc01", 2)], [FullConnect("fc02", 2)] ,[FullConnect("fc03", 2)],
-        [FullConnect("fc04", 2)], [FullConnect("fc05", 2)] ,[FullConnect("fc06", 2)],
-        [FullConnect("fc07", 2)], [FullConnect("fc08", 2)] ,[FullConnect("fc09", 2)],
-        [FullConnect("fc10", 2)], [FullConnect("fc11", 2)] ,[FullConnect("fc12", 2)],
-        [FullConnect("fc13", 2)], [FullConnect("fc14", 2)] ,[FullConnect("fc15", 2)],
-        [FullConnect("fc16", 2)], [FullConnect("fc17", 2)] ,[FullConnect("fc18", 2)],
-        [FullConnect("fc19", 2)], [FullConnect("fc20", 2)] ,[FullConnect("fc21", 2)],
-        [FullConnect("fc22", 2)], [FullConnect("fc23", 2)] ,[FullConnect("fc24", 2)],
-        [FullConnect("fc25", 2)], [FullConnect("fc26", 2)] ,[FullConnect("fc27", 2)],
-        [FullConnect("fc28", 2)], [FullConnect("fc29", 2)] ,[FullConnect("fc30", 2)],
-        [FullConnect("fc31", 2)], [FullConnect("fc32", 2)] ,[FullConnect("fc33", 2)],
-        [FullConnect("fc34", 2)], [FullConnect("fc35", 2)] ,[FullConnect("fc36", 2)],
-        [FullConnect("fc37", 2)], [FullConnect("fc38", 2)] ,[FullConnect("fc39", 2)],
-        [FullConnect("fc40", 2)],
-        axis=1, name="fcconcat"
-    )
+    FullConnect("fc", NUM_CLASSES, activationProc=tf.sigmoid)
 ]
 
 WSCALE=math.sqrt(2.0/NUM_CLASSES)
@@ -140,10 +116,11 @@ num_gpu = 2
 
 # 画像サイズを既に加工済みなら、cropが速い
 imageResize = "crop"
-dataType = "multiLabel"
-accuracy = ("nth", 40) # Male
+dataType = "multi-label"
 faceType = "real"
 
 trainFile = "train.txt"
 testFile = "test.txt"
 validFile = "not exists"
+
+isLargeDataset = True

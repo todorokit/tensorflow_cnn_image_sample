@@ -12,11 +12,8 @@ class Layer(object):
     # 1 gpu の場合、cpuに保存しない方が速い。multi gpu の場合, cpu側のメモリに保存しなくてはならない
     def makeVar(self, name, shape, initializer, trainable=True):
         #print(name+" " + str(shape) + " "+  str(trainable))
-        # FIXME: darty hack mgpu
-        if re.search("mgpu.py", sys.argv[0]):
-            with tf.device('/cpu:0'):
-                var = tf.get_variable(name, shape, initializer=initializer, trainable=trainable, dtype=baseConfig.floatSize)
-        else:
+        # gpuに配置すると、cpuで推論できなくなる。
+        with tf.device('/cpu:0'):
             var = tf.get_variable(name, shape, initializer=initializer, trainable=trainable, dtype=baseConfig.floatSize)
         return var
 
@@ -194,3 +191,24 @@ class Concat(Layer):
             # print(h_in.shape)
             results.append(h_in)
         return tf.concat(results, self.axis, name=self.name)
+
+class Concat2D(Layer):
+    def __init__(self, layers, name = None, axis = 3):
+        self.name = name
+        self.layersList = layers
+        self.axis = axis
+
+    def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse, freeze):
+        results = []
+        for layers in self.layersList:
+            # print("-- concat layer loop ("+self.name+") --")
+            h_in = h
+            for layer in layers:
+                # print(layer.name)
+                # print(h_in.shape)
+                h_in = layer.apply(tuneArray, h_in, wscale, phaseTrain, keepProb, reuse, freeze)
+            # print("output")
+            # print(h_in.shape)
+            results.append(h_in)
+        return tf.concat(results, self.axis, name=self.name)
+    

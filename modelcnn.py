@@ -1,28 +1,29 @@
 import tensorflow as tf
-import tensorflow.python.platform
 
 from config import baseConfig
-
-flags = tf.app.flags
-flags.DEFINE_string('config', "config.celeba", 'config module(file) name (no extension).')
+from tensorflow.contrib.all_reduce.python import all_reduce
 
 def inference(imagePh, keepProb, config, reuse = False, phaseTrain = None, freeze = False):
     tuneArray = []
-    imageSize = config.IMAGE_SIZE
-    numInitChannel = config.NUM_RGB_CHANNEL
-    conv2dList = config.conv2dList
-    wscale = config.WSCALE
-    h = tf.reshape(imagePh, [-1, imageSize[0], imageSize[1], numInitChannel])
+    h = tf.reshape(imagePh, [-1, config.IMAGE_SIZE[0], config.IMAGE_SIZE[1], config.NUM_RGB_CHANNEL])
 
-    for layer in conv2dList:
+    for layer in config.conv2dList:
 #        print(klass.name)
 #        print(h.shape)
-        h = layer.apply(tuneArray, h, wscale, phaseTrain, keepProb, reuse, freeze)
+        h = layer.apply(tuneArray, h, config.WSCALE, phaseTrain, keepProb, reuse, freeze)
     return (h, tuneArray)
 
 def loss(logits, labels):
-    cross_entropy = -tf.reduce_sum(labels*tf.log(tf.clip_by_value(logits,1e-10,1.0)))
-#    tf.summary.scalar("cross_entropy", cross_entropy)
+    cross_entropy = -tf.reduce_sum(labels*tf.log(tf.clip_by_value(logits,1e-10,1.0-1e-10)))
+    # tf.summary.scalar("cross_entropy", cross_entropy)
+    return cross_entropy
+
+def crossentropy(logits, labels):
+    # 精度が低い
+    # tf.Session().run(tf.constant(1.0) - (tf.constant(1.0) - 1e-10)) => 0
+    logits = tf.clip_by_value(logits,1e-6,1.0 - 1e-6)
+    cross_entropy = tf.reduce_sum(labels* -tf.log(logits) + (1 - labels) *  -tf.log(1 - logits))
+    # tf.summary.scalar("cross_entropy", cross_entropy)
     return cross_entropy
 
 def accuracy(logits, labels):
@@ -30,33 +31,17 @@ def accuracy(logits, labels):
     accuracy = tf.reduce_sum(tf.cast(correct_prediction, baseConfig.floatSize))
     return accuracy
 
-def accuracyML(logits, labels, k):
-    logitsK = tf.nn.top_k(logits, k).indices
-    labelsK = tf.nn.top_k(labels, k).indices
-    accuracy = tf.size(tf.sets.set_intersection(logitsK,labelsK).values)
-    return tf.cast(accuracy, baseConfig.floatSize) / tf.cast(k, baseConfig.floatSize)
-
-def accuracyMLNth(logits, labels, n):
-    correct_prediction = tf.equal(tf.argmax(logits[:,n:n+2], 1), tf.argmax(labels[:,n:n+2], 1))
-    accuracy = tf.reduce_sum(tf.cast(correct_prediction, baseConfig.floatSize))
-    return accuracy
-
 def compile(images, labels, keepProb, isTrain, config, learning_rate = 1e-4):
     with tf.name_scope("tower_0"):
         logits, _ = inference(images, keepProb, config, False, isTrain)
-    loss_value = loss(logits, labels)
+    if config.dataType == "multi-label":
+        loss_value = crossentropy(logits, labels)
+    else:
+        loss_value = loss(logits, labels)
+    
     train_op = tf.train.AdamOptimizer(learning_rate).minimize(loss_value)
-    if config.dataType == "multiLabel":
-        if isinstance(config.accuracy, tuple):
-            method, arg = config.accuracy
-            if method == "nth":
-                acc_op = accuracyMLNth(logits, labels, arg)
-            else:
-                raise Exception("config.accuracy is not known")
-        else:
-            k = len(config.NUM_CLASSES_LIST)
-            acc_op = accuracyML(logits, labels, k)
-            #        acc_op = loss_value
+    if config.dataType == "multi-label":
+        acc_op = loss_value
     else:
         acc_op = accuracy(logits, labels)
     return (train_op, acc_op)
@@ -134,6 +119,7 @@ def multiGpuLearning(config, phs, learning_rate= 1e-4):
 
         logitsList = []
         towerGrads = []
+        lossvalues = []
         xtuneArray = None
         opt = tf.train.AdamOptimizer(learning_rate)
 
@@ -150,29 +136,25 @@ def multiGpuLearning(config, phs, learning_rate= 1e-4):
                 with tf.device("/gpu:"+str(gpu_id)):
                     with tf.name_scope("tower_"+str(gpu_id)):
                         logits, tuneArray = inference(slicedImagePh, phs.getKeepProb(), config, reuseVar, phs.getPhaseTrain())
-                        # 1回目はinferenceでreuse(参照)しない。 createする
+                        # 1回目はinferenceでreuse(参照)しない。 allocateする
                         # 2回目以降はreuse(参照)する。
                         reuseVar = True
                         if xtuneArray is None:
                             xtuneArray = tuneArray
                         logitsList.append((logits, slicedLabelPh))
-                        loss_value = loss(logits, slicedLabelPh)
+                        if config.dataType == "multi-label":
+                            loss_value = crossentropy(logits, slicedLabelPh)
+                        else:
+                            loss_value = loss(logits, slicedLabelPh)
                         grads = opt.compute_gradients(loss_value)
                         towerGrads.append(grads)
+                        lossvalues.append(loss_value)
 
             grads = average_gradients(towerGrads)
             train_op = opt.apply_gradients(grads, global_step=global_step)
 
-            if config.dataType == "multiLabel":
-                if isinstance(config.accuracy, tuple):
-                    method, arg = config.accuracy
-                    if method == "nth":
-                        acc_op = tf.add_n([accuracyMLNth(logits, labels, arg) for logits, labels in logitsList])
-                    else:
-                        raise Exception("config.accuracy is not known")
-                else:
-                    k = len(config.NUM_CLASSES_LIST)
-                    acc_op = tf.add_n([accuracyML(logits, labels, k) for logits, labels in logitsList])
+            if config.dataType == "multi-label":
+                acc_op = tf.add_n(lossvalues)
             else:
                 acc_op = tf.add_n([accuracy(logits, labels) for logits, labels in logitsList])
             return train_op, acc_op, xtuneArray, debug

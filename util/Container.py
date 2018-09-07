@@ -7,9 +7,8 @@ from util.MySaver import MySaver
 import modelcnn
 from dataset.OnMemoryDataset import OnMemoryDataset 
 from dataset.OnMemoryDatasetForTest import OnMemoryDatasetForTest
-
-flags = tf.app.flags
-FLAGS = flags.FLAGS
+from dataset.LargeDataset import LargeDataset
+from dataset.MultilabelLargeDataset import MultilabelLargeDataset
 
 class DIContainer:
     def __init__(self, c):
@@ -88,6 +87,26 @@ class MyFactory(ComponentFactory):
         FLAGS = self.container.get("flags")
         return OnMemoryDatasetForTest(config.testFile, config, FLAGS.acc_batch_size)
 
+    def buildLargetraindataset(self):
+        config = self.container.get("config")
+        FLAGS = self.container.get("flags")
+        return LargeDataset(config.trainFile, config, FLAGS.batch_size)
+
+    def buildLargetestdataset(self):
+        config = self.container.get("config")
+        FLAGS = self.container.get("flags")
+        return LargeDataset(config.testFile, config, FLAGS.acc_batch_size)
+
+    def buildMultilargetraindataset(self):
+        config = self.container.get("config")
+        FLAGS = self.container.get("flags")
+        return MultilabelLargeDataset(config.trainFile, config, FLAGS.batch_size)
+
+    def buildMultilargetestdataset(self):
+        config = self.container.get("config")
+        FLAGS = self.container.get("flags")
+        return MultilabelLargeDataset(config.testFile, config, FLAGS.acc_batch_size)
+
     def buildValiddataset(self):
         config = self.container.get("config")
         FLAGS = self.container.get("flags")
@@ -97,4 +116,5 @@ class MyFactory(ComponentFactory):
             validDataset = None
         return validDataset
 
-Container = DIContainer(MyFactory(FLAGS))
+def getContainer(FLAGS):
+    return DIContainer(MyFactory(FLAGS))
