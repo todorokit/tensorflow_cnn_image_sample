@@ -38,12 +38,9 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('config', "config.celeba", 'config module(file) name (no extension).')
 flags.DEFINE_integer('epoch', 1000, 'Number of epoch to run trainer.')
 flags.DEFINE_integer('batch_size', 80, 'Training batch size. This must divide evenly into the train dataset sizes.')
-flags.DEFINE_integer('acc_batch_size', 80, 'Accuracy batch size. Take care of memory limit.')
+flags.DEFINE_integer('acc_batch_size', 500, 'Accuracy batch size. Take care of memory limit.')
 flags.DEFINE_float('memory', 0.90, 'Using gpu memory.')
 flags.DEFINE_boolean('freeze', True, 'Number of epoch to run trainer.')
-
-
-printCUDA_env()
 
 def main(_):
     with tf.Graph().as_default():

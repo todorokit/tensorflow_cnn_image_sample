@@ -112,6 +112,7 @@ WSCALE=math.sqrt(2.0/NUM_CLASSES)
 modelFile = "model_celeba.ckpt"
 scoreFileName = "score_celeba.ckpt"
 num_gpu = 2
+visible_device_list="0"
 
 imageResize = "resize"
 dataType = "label"
@@ -121,3 +122,5 @@ faceType = "anime"
 trainFile = "train.txt"
 testFile = "test.txt"
 validFile = "valid.txt"
+
+isLargeDataset = True

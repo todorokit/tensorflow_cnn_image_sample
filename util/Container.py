@@ -51,7 +51,8 @@ class MyFactory(ComponentFactory):
         return self.FLAGS
     
     def buildSess(self):
-        return makeSess(self.FLAGS)
+        config = self.container.get("config")
+        return makeSess(self.FLAGS, config)
 
     def buildSaver(self):
         config = self.container.get("config")

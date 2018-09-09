@@ -29,6 +29,7 @@ WSCALE=math.sqrt(2.0/NUM_CLASSES)
 # multi gpu make same model.ckpt
 modelFile = "model.ckpt"
 num_gpu = 2
+visible_device_list="0"
 
 imageResize = "resize"
 dataType = "label"
@@ -38,3 +39,5 @@ faceType = "anime"
 trainFile = "train.txt"
 testFile = "test.txt"
 validFile = "valid.txt"
+
+isLargeDataset = True

@@ -137,9 +137,8 @@ def inferenceFile(path):
 #        real_image = cv2.imread(path)
 #        cv2.imwrite(os.path.join(cwd, "debug%d.png")% (i), real_image);
         arr = sess.run(logits, feed_dict={images_placeholder: [image], phaseTrain:False, keepProb: 1.0})[0]
-        print(arr)
         if config.dataType == "multi-label":
-            indices = sess.run(tf.nn.top_k(arr, 5).indices)
+            indices = sess.run(tf.nn.top_k(arr, 10).indices)
         else:
             indices = top5(arr)
         print ("----- %02d ----" % (i))

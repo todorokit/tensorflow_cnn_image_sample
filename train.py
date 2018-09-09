@@ -12,7 +12,7 @@ from util.MyTimer import MyTimer
 flags = tf.app.flags
 flags.DEFINE_integer('epoch', 1000, 'Number of epoch to run trainer.')
 flags.DEFINE_integer('batch_size', 80, 'Training batch size. This must divide evenly into the train dataset sizes.')
-flags.DEFINE_integer('acc_batch_size', 1000, 'Accuracy batch size. Take care of memory limit.')
+flags.DEFINE_integer('acc_batch_size', 500, 'Accuracy batch size. Take care of memory limit.')
 flags.DEFINE_string('config', "config.celeba", 'config module(file) name (no extension).')
 flags.DEFINE_float('memory', 0.90, 'Using gpu memory.')
 FLAGS = flags.FLAGS
@@ -24,8 +24,10 @@ def main(argv):
         config = Container.get("config")
         phs = Container.get("placeholders")
         if config.num_gpu > 1 :
+            print("MULTI GPU MODE")
             train_op, acc_op = Container.get("ops_mgpu")
         else:
+            print("SINGLE GPU MODE")
             train_op, acc_op = Container.get("ops")
         sess = Container.get("sess")
         saver = Container.get("saver")

@@ -23,15 +23,15 @@ def listDir(dir):
         ret.append(os.path.join(dir, file))
     return ret
 
-
-def makeSess(flags):
-    if flags.memory == 0.0:
-        sess = tf.Session()
-    else:
-        gpuConfig = tf.ConfigProto(
-            gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=flags.memory),
+def makeSess(flags, config):
+    gpuConfig = tf.ConfigProto(
+        gpu_options=tf.GPUOptions(
+            per_process_gpu_memory_fraction=flags.memory,
+            visible_device_list=config.visible_device_list
+#            ,allow_growth=True
         )
-        sess = tf.Session(config=gpuConfig)
+    )
+    sess = tf.Session(config=gpuConfig)
     sess.run(tf.global_variables_initializer())
     return sess
 
@@ -53,27 +53,19 @@ def saveBest(config, FLAGS, sess, mysaver, score):
             fp.close()
             return float(score)
         else:
-            return 0.0
+            return None
 
     def writeScore(path, score):
         fp = open(path, "w")
         fp.write(str(score))
         fp.close()
         
-    if getBest() < float(score):
+    if getBest() is None or ((config.dataType == "multi-label" and getBest() > float(score)) or (config.dataType != "multi-label" and getBest() < float(score))):
         print("Save Best ")
         cwd = os.getcwd()
         mysaver.save()
         backup(deepImportToPath(FLAGS.config), config.modelFile, "best-model")
         writeScore(os.path.join("best-model", config.scoreFileName), score)
-
-def printCUDA_env():
-    print ("------------GPU DEVICES----------------")
-    try:
-        print (os.environ["CUDA_VISIBLE_DEVICES"])
-    except:
-        print ("all gpu (default)")
-    print ("---------------------------------------")
 
 def importer(name, root_package=False, relative_globals=None, level=0):
     """ We only import modules, functions can be looked up on the module.
