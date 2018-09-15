@@ -1,28 +1,16 @@
-from dataset.AbstractDataset import AbstractDataset
-from tensorflow.python.ops import array_ops
-
 import tensorflow as tf
-import tensorflow.data as data
-
-import config.baseConfig as baseConfig
-import config.classes
-import util.image
-
 import numpy as np
 
-def to_index(label):
-    return config.classes[label]
-
-def parse_csv(line):
-    line = line.decode('utf-8')
-    return line
-
+from dataset.AbstractDataset import AbstractDataset
+import config.baseConfig as baseConfig
 
 class MultilabelLargeDataset(AbstractDataset):
-    def __init__(self, csvpath, config, batch_size):
+    def __init__(self, csvpath, config, batch_size, cache):
         def makeImage(img):
-#            height, width, channel = img.shape
-            img = tf.image.resize_image_with_crop_or_pad(img, config.IMAGE_SIZE[0], config.IMAGE_SIZE[1])
+            shape = tf.shape(img)
+            height = tf.cond(shape[0] > shape[1], lambda : shape[1], lambda :shape[0])
+            img = tf.image.resize_image_with_crop_or_pad(img, height, height)
+            img = tf.image.resize_images(img, [config.IMAGE_SIZE[1],config.IMAGE_SIZE[0]])
             img = tf.image.random_flip_left_right(img)
             img = tf.image.random_brightness(img, max_delta=63)
             img = tf.image.random_contrast(img, lower=0.2, upper=1.8)
@@ -55,10 +43,13 @@ class MultilabelLargeDataset(AbstractDataset):
             self.labelBatchs = labelBatchs
             self.length = n
             
-            self._createDataset =  tf.data.Dataset.from_tensor_slices(imgPaths)\
+            self._imageDataset =  tf.data.Dataset.from_tensor_slices(imgPaths)\
                                                   .map(read_image)\
                                                   .batch(self.batch_size)
-            self._iterator = self._createDataset.make_initializable_iterator()
+            if cache:
+                self._imageDataset.cache()
+
+            self._iterator = self._imageDataset.make_initializable_iterator()
             self._next_elem = self._iterator.get_next()
 
     def getLen(self):

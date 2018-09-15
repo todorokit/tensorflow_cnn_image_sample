@@ -112,7 +112,6 @@ modelFile = "model_celeba.ckpt"
 scoreFileName = "score_celeba.ckpt"
 num_gpu = 1
 
-imageResize = "resize"
 dataType = "label"
 faceType = "anime"
 
@@ -120,4 +119,5 @@ trainFile = "train.txt"
 testFile = "test.txt"
 validFile = "valid.txt"
 
-isLargeDataset = True
+isCacheTrain = False
+isCacheTest = False

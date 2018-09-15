@@ -5,15 +5,15 @@ NUM_IMAGE=195148
 trainFile="train.txt"
 testFile="test.txt"
 attrFile = "/data/celeba/list_attr_celeba.txt"
-imageDir = "/data/celeba/img_align_celeba/"
+imageDir = "/data/celeba/img_73/"
 if len(sys.argv) >= 2 and sys.argv[1].isnumeric():
     trainNum = int(sys.argv[1])
 else:
-    trainNum = 160000
+    trainNum = 16000
 if len(sys.argv) >= 3 and sys.argv[2].isnumeric():
     testNum = int(sys.argv[2])
 else:
-    testNum  = 30000
+    testNum  = 3000
 
 def find(dir, dirs):
     ret = dirs

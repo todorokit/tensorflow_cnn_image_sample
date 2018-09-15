@@ -34,19 +34,14 @@ def main(argv):
         sess = Container.get("sess")
         saver = Container.get("saver")
 
-        if config.isLargeDataset:
-            if config.dataType == "multi-label":
-                trainDataset = Container.get("multilargetraindataset")
-                testDataset =  Container.get("multilargetestdataset")
-                validDataset = None
-            else:
-                trainDataset = Container.get("largetraindataset")
-                trainDataset = Container.get("largetestdataset")
-                validDataset = None
+        if config.dataType == "multi-label":
+            trainDataset = Container.get("multilargetraindataset")
+            testDataset =  Container.get("multilargetestdataset")
+            validDataset = None
         else:
-            trainDataset = Container.get("traindataset")
-            testDataset =  Container.get("testdataset")
-            validDataset =  Container.get("validdataset")
+            trainDataset = Container.get("largetraindataset")
+            testDataset = Container.get("largetestdataset")
+            validDataset = None
 
         for epoch in range(FLAGS.epoch):
             timer = MyTimer()

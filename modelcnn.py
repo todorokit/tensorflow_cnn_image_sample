@@ -77,7 +77,7 @@ def compile(images, labels, keepProb, isTrain, config, FLAGS):
         with tf.name_scope("tower_0"):
             logits, _ = model(images, keepProb, config, False, isTrain)
             if config.dataType == "multi-label":
-                loss_value = crossentropy(logits, labels, FLAGS.batch_size//config.num_gpu, config.NUM_CLASSES)
+                loss_value = crossentropy(logits, labels)
             else:
                 loss_value = loss(logits, labels)
 # MomentumOptimizer fp32でも収束しなかった。

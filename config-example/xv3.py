@@ -28,7 +28,6 @@ conv2dList = [ wr.Conv2D("conv_bn1", 32, (18, 18), padding="SAME"),
 modelFile = "model.ckpt"
 num_gpu = 1
 
-imageResize = "resize"
 dataType = "label"
 faceType = "anime"
 
@@ -36,4 +35,6 @@ trainFile = "train.txt"
 testFile = "test.txt"
 validFile = "valid.txt"
 
-isLargeDataset = True
+
+isCacheTrain = False
+isCacheTest = False

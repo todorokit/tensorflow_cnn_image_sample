@@ -114,7 +114,6 @@ scoreFileName = "score_celeba.ckpt"
 num_gpu = 1
 
 # 画像サイズを既に加工済みなら、cropが速い
-imageResize = "crop"
 dataType = "multi-label"
 faceType = "real"
 
@@ -122,4 +121,5 @@ trainFile = "train.txt"
 testFile = "test.txt"
 validFile = "not exists"
 
-isLargeDataset = True
+isCacheTrain = False
+isCacheTest = False

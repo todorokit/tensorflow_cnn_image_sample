@@ -65,10 +65,6 @@ python train.py --config config.xv3
 * float16対応した。(GTX1080tiでは遅くなった.型変換入っているのかも？)
 
 # TODO
-* pad crop で正方形にしてから、リサイズする
 * Large Dataset (multi labelも) で shuffleできるようにする。
-* test Dataset はキャッシュできるようにする
 * tf.layers.batch_normalizationをつかう
-
-# メモ
-* TitanV ボトルネックは メモリ転送レートが1.7Gbps だからか、batch_normalizationがtensorcore使えないからからか。
+* channels_first にする。

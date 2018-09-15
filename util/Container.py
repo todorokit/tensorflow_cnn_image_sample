@@ -5,8 +5,6 @@ import os
 from util.utils import *
 from util.MySaver import MySaver
 import modelcnn
-from dataset.OnMemoryDataset import OnMemoryDataset 
-from dataset.OnMemoryDatasetForTest import OnMemoryDatasetForTest
 from dataset.LargeDataset import LargeDataset
 from dataset.MultilabelLargeDataset import MultilabelLargeDataset
 
@@ -79,35 +77,25 @@ class MyFactory(ComponentFactory):
         train_op, acc_op, _, debug = modelcnn.multiGpuLearning(config, phs)
         return (train_op, acc_op)
 
-    def buildTraindataset(self):
-        config = self.container.get("config")
-        FLAGS = self.container.get("flags")
-        return OnMemoryDataset(config.trainFile, config, FLAGS.batch_size, FLAGS.acc_batch_size)
-
-    def buildTestdataset(self):
-        config = self.container.get("config")
-        FLAGS = self.container.get("flags")
-        return OnMemoryDatasetForTest(config.testFile, config, FLAGS.acc_batch_size)
-
     def buildLargetraindataset(self):
         config = self.container.get("config")
         FLAGS = self.container.get("flags")
-        return LargeDataset(config.trainFile, config, FLAGS.batch_size)
+        return LargeDataset(config.trainFile, config, FLAGS.batch_size, config.isCacheTrain)
 
     def buildLargetestdataset(self):
         config = self.container.get("config")
         FLAGS = self.container.get("flags")
-        return LargeDataset(config.testFile, config, FLAGS.acc_batch_size)
+        return LargeDataset(config.testFile, config, FLAGS.acc_batch_size, config.isCacheTest)
 
     def buildMultilargetraindataset(self):
         config = self.container.get("config")
         FLAGS = self.container.get("flags")
-        return MultilabelLargeDataset(config.trainFile, config, FLAGS.batch_size)
+        return MultilabelLargeDataset(config.trainFile, config, FLAGS.batch_size, config.isCacheTrain)
 
     def buildMultilargetestdataset(self):
         config = self.container.get("config")
         FLAGS = self.container.get("flags")
-        return MultilabelLargeDataset(config.testFile, config, FLAGS.acc_batch_size)
+        return MultilabelLargeDataset(config.testFile, config, FLAGS.acc_batch_size, config.isCacheTest)
 
     def buildValiddataset(self):
         config = self.container.get("config")

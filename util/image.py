@@ -6,62 +6,6 @@ import numpy as np
 import config.classes
 from config import baseConfig
 
-def loadMultiLabelImages(labelFilePath, imageSize, numClassList, imsgeResize):
-    file = open(labelFilePath, 'r')
-    image = []
-    label = []
-    paths = []
-    numClass = sum(numClassList)
-    loop = 0
-    for line in file:
-        line = line.rstrip()
-        words = line.split()
-        imgpath = words.pop(0)
-        lineLabels = [int(word) for word in words]
-        
-        img = cv2.imread(imgpath)
-        if img is None:
-            continue
-        img = makeImage(img, imageSize, imsgeResize)
-        image.append(img)
-        labelData = np.astype(lineLabels, dtype=np.int8)
-        label.append(labelData)
-        paths.append(imgpath)
-
-        loop += 1
-        if loop % 1000 == 0:
-            print("load %d" % (loop,))
-
-    file.close()
-    return (np.asarray(image), np.asarray(label), paths)
-
-def loadImages(labelFilePath, imageSize, numClass, imageResize):
-    file = open(labelFilePath, 'r')
-    image = []
-    label = []
-    paths = []
-    for line in file:
-        line = line.rstrip()
-        match = re.search(r"^valid[/\\](\w+)[/\\][\w.-]+$", line)
-        if match:
-            imgpath = line
-            className = match.group(1)
-            labelIndex = [k for (k, v) in config.classes.classList.items() if v == className][0]
-        else:
-            imgpath, labelIndex = line.split(",")
-        
-        img = cv2.imread(imgpath)
-        if img is None:
-            continue
-        img = makeImage(img, imageSize, imageResize)
-        image.append(img)
-        labelData = np.zeros(numClass)
-        labelData[int(labelIndex)] = 1
-        label.append(labelData)
-        paths.append(imgpath)
-    file.close()
-    return (np.asarray(image), np.asarray(label), paths)
-
 def makeImage(img, imageSize, resize = "resize"):
     if resize == "resize":
         img = cv2.resize(img, (imageSize[1], imageSize[0]))
