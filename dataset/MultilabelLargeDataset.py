@@ -20,6 +20,9 @@ class MultilabelLargeDataset(AbstractDataset):
             contents = tf.read_file(filename)
             return makeImage(tf.image.decode_image(contents))
 
+        def read_label(labels):
+            return tf.string_to_number(tf.string_split([labels], delimiter=',').values, out_type=tf.float32)
+
         self.batch_size = batch_size
 
         self._config = config
@@ -27,48 +30,60 @@ class MultilabelLargeDataset(AbstractDataset):
             file = open(csvpath, 'r')
             imgPaths = []
             labelIds = []
-            labelBatchs = []
             n = 0
             for line in file:
-                imgPath, *labels= line.split(",")
+                imgPath, labels= line.split(",", 1)
                 imgPaths.append(imgPath)
                 # 出力は float 32bit (softmax が32bitだから)
-                labelIds.append(np.array(labels, dtype=np.float32))
-                if len(labelIds) == batch_size:
-                    labelBatchs.append(labelIds)
-                    labelIds = []
+                labelIds.append(labels.strip())
                 n += 1
-            if len(labelIds) > 0:
-                labelBatchs.append(labelIds)
-            self.labelBatchs = labelBatchs
             self.length = n
             
             self._imageDataset =  tf.data.Dataset.from_tensor_slices(imgPaths)\
-                                                  .map(read_image)\
-                                                  .batch(self.batch_size)
+                .map(read_image)
+            self._labelDataset =  tf.data.Dataset.from_tensor_slices(labelIds)\
+                .map(read_label)
+        
+            self._dataset = tf.data.Dataset.zip((self._imageDataset, self._labelDataset))\
+                .shuffle(self.batch_size)\
+                .batch(self.batch_size)
             if cache:
-                self._imageDataset.cache()
+                self._dataset.cache()
 
-            self._iterator = self._imageDataset.make_initializable_iterator()
+            self._iterator = self._dataset.make_initializable_iterator()
             self._next_elem = self._iterator.get_next()
+            
 
     def getLen(self):
         return self.length
 
-    def train(self, sess, op, phs, dropout=0.5):
+    def train(self, sess, op, acc_op, phs, saver, dropout=0.5):
         with tf.device("cpu:0"):
             sess.run(self._iterator.initializer)
-        for labels in self.labelBatchs:
+        for loop in range(1000000):
             with tf.device("cpu:0"):
-                trains = sess.run(self._next_elem)
+                try:
+                    (trains, labels) = sess.run(self._next_elem)
+                    if len(trains) == 0:
+                        break
+                except Exception as e:
+                    break
             sess.run(op, feed_dict=phs.getDict(trains, labels, dropout, True))
+            if loop % 100 == 99:
+                acc = sess.run(acc_op, feed_dict=phs.getDict(trains, labels, 1.0)) / len(trains)
+                saver.save("train-loss: %g"% acc)
   
     def calcAccuracy(self, sess, op, phs):
         acc_sum = 0
         with tf.device("cpu:0"):
             sess.run(self._iterator.initializer)
-        for labels in self.labelBatchs:
+        for loop in range(1000000):
             with tf.device("cpu:0"):
-                trains = sess.run(self._next_elem)
+                try:
+                    (trains, labels) = sess.run(self._next_elem)
+                    if len(trains) == 0:
+                        break
+                except Exception as e:
+                    break
             acc_sum += sess.run(op, feed_dict=phs.getDict(trains, labels, 1.0))
         return acc_sum / self.length

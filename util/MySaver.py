@@ -1,4 +1,4 @@
-import os
+import os, sys
 import tensorflow as tf
 
 class MySaver():
@@ -11,8 +11,9 @@ class MySaver():
             cwd = os.getcwd()
             self.saver.restore(self.sess, os.path.join(cwd, self.modelFile))
 
-    def save(self):
+    def save(self, str1 = None):
+        if str1 is not None:
+            print("save: %s" % str1)
+            sys.stdout.flush()
         cwd = os.getcwd()
         self.saver.save(self.sess, os.path.join(cwd, self.modelFile))
-
-

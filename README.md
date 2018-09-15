@@ -57,14 +57,13 @@ python train.py --config config.xv3
 
 # 最近の活動
 
-* Titan V でfloat16 のテストした。精度がでるようにした？速度は1080tiの2.5倍程度？手放しに10倍速くなると思ったのに、調整して2.5倍。
+* Titan V でfloat16 のテストした。精度がでるようにした？
 * 画像数100万でも学習できるようにした。
 * multi GPU で batch_normalizationを対応させた。
 * multi GPU で celeba対応した。
-* linux 対応した。
-* float16対応した。(GTX1080tiでは遅くなった.型変換入っているのかも？)
 
 # TODO
-* Large Dataset (multi labelも) で shuffleできるようにする。
 * tf.layers.batch_normalizationをつかう
 * channels_first にする。
+* protocol bufferで出力
+* placeholder は modelで生成する。

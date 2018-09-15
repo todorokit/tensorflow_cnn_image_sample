@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os, sys
-
 import tensorflow as tf
 
 from util.Container import getContainer
@@ -37,28 +35,30 @@ def main(argv):
         if config.dataType == "multi-label":
             trainDataset = Container.get("multilargetraindataset")
             testDataset =  Container.get("multilargetestdataset")
-            validDataset = None
+            validDataset = Container.get("multivaliddataset")
         else:
             trainDataset = Container.get("largetraindataset")
             testDataset = Container.get("largetestdataset")
-            validDataset = None
+            validDataset = Container.get("validdataset")
 
+        merged = tf.summary.merge_all()
+        if tf.gfile.Exists('./logdir'):
+            tf.gfile.DeleteRecursively('./logdir')
+        writer = tf.summary.FileWriter('./logdir', sess.graph)
+        
         for epoch in range(FLAGS.epoch):
             timer = MyTimer()
             test_accuracy = -1.0
             valid_accuracy = -1.0
-            trainDataset.train(sess, train_op, phs)
+            trainDataset.train(sess, train_op, acc_op, phs, saver)
             test_accuracy = testDataset.calcAccuracy(sess, acc_op, phs)
             valid_accuracy = -1.0
             if validDataset is not None:
                 valid_accuracy = validDataset.calcAccuracy(sess, acc_op, phs)
-            
-            saveBest(config, FLAGS, sess, saver, test_accuracy)
-            saver.save()
+#            writer.add_summary(sess.run([merged, ]), epoch)
 
-            # train_accuracy, 
-            print("%s: epoch %d, (%g, %g) %g data/sec"%(timer.getNow("%H:%M:%S"), epoch, test_accuracy, valid_accuracy , trainDataset.getLen() / timer.getTime()))
-            sys.stdout.flush()
+            saveBest(config, FLAGS, sess, saver, test_accuracy)
+            saver.save("%s: epoch %d, (%g, %g) %g data/sec"%(timer.getNow("%H:%M:%S"), epoch, test_accuracy, valid_accuracy , trainDataset.getLen() / timer.getTime()))
 
 if __name__ == '__main__':
     tf.app.run()

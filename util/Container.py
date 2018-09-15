@@ -87,6 +87,15 @@ class MyFactory(ComponentFactory):
         FLAGS = self.container.get("flags")
         return LargeDataset(config.testFile, config, FLAGS.acc_batch_size, config.isCacheTest)
 
+    def buildValiddataset(self):
+        config = self.container.get("config")
+        FLAGS = self.container.get("flags")
+        if config.validFile and os.path.exists(config.validFile):
+            validDataset = LargeDataset(config.validFile, config, FLAGS.acc_batch_size, config.isCacheTest)
+        else:
+            validDataset = None
+        return validDataset
+    
     def buildMultilargetraindataset(self):
         config = self.container.get("config")
         FLAGS = self.container.get("flags")
@@ -97,11 +106,11 @@ class MyFactory(ComponentFactory):
         FLAGS = self.container.get("flags")
         return MultilabelLargeDataset(config.testFile, config, FLAGS.acc_batch_size, config.isCacheTest)
 
-    def buildValiddataset(self):
+    def buildMultivaliddataset(self):
         config = self.container.get("config")
         FLAGS = self.container.get("flags")
         if config.validFile and os.path.exists(config.validFile):
-            validDataset = OnMemoryDatasetForTest(config.validFile, config, FLAGS.acc_batch_size)
+            validDataset = MultilabelLargeDataset(config.validFile, config, FLAGS.acc_batch_size, config.isCacheTest)
         else:
             validDataset = None
         return validDataset

@@ -14,17 +14,19 @@ def model(imagePh, keepProb, config, reuse = False, phaseTrain = None, freeze = 
     return (h, tuneArray)
 
 def loss(logits, labels):
-    cross_entropy = -tf.reduce_sum(labels*tf.log(tf.clip_by_value(logits,1e-10,1.0-1e-10)))
-    # tf.summary.scalar("cross_entropy", cross_entropy)
-    return cross_entropy
+    loss = -tf.reduce_sum(labels*tf.log(tf.clip_by_value(logits,1e-10,1.0-1e-10)))
+#    with tf.device("/cpu:0"):
+#        tf.summary.scalar("loss", loss)
+    return loss
 
 def crossentropy(logits, labels):
     # 精度が低い
     # tf.Session().run(tf.constant(1.0) - (tf.constant(1.0) - 1e-10)) => 0
     logits = tf.clip_by_value(logits,1e-6,1.0 - 1e-6)
-    cross_entropy = tf.reduce_sum(labels* -tf.log(logits) + (1 - labels) *  -tf.log(1 - logits))
-    # tf.summary.scalar("cross_entropy", cross_entropy)
-    return cross_entropy
+    loss = tf.reduce_sum(labels* -tf.log(logits) + (1 - labels) *  -tf.log(1 - logits))
+#    with tf.device("/cpu:0"):
+#        tf.summary.scalar("loss", loss)
+    return loss
 
 def accuracy(logits, labels):
     correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))
@@ -182,7 +184,8 @@ def multiGpuLearning(config, phs, learning_rate= 1e-4):
                 slice_start = [in_batch_start, 0]
                 slicedImagePh = tf.slice(phs.getImages(), slice_start, [in_batch_length, config.IMAGE_SIZE[0] * config.IMAGE_SIZE[1]* config.NUM_RGB_CHANNEL])
                 slicedLabelPh = tf.slice(phs.getLabels(), slice_start, [in_batch_length, config.NUM_CLASSES])
-                with tf.device("/gpu:"+str(gpu_id)):
+                with tf.device("/gpu:"+str(gpu_id)), \
+                     tf.variable_scope('fp32_storage', custom_getter=float32_variable_storage_getter):
                     with tf.name_scope("tower_"+str(gpu_id)):
                         logits, tuneArray = model(slicedImagePh, phs.getKeepProb(), config, reuseVar, phs.getPhaseTrain())
                         # 1回目はmodelでreuse(参照)しない。 allocateする
