@@ -29,6 +29,10 @@ class LargeDataset(AbstractDataset):
     def __init__(self, csvpath, config, batch_size):
         def makeImage(img):
             img = tf.image.resize_image_with_crop_or_pad(img, config.IMAGE_SIZE[0], config.IMAGE_SIZE[1])
+            img = tf.image.random_flip_left_right(img)
+            img = tf.image.random_brightness(img, max_delta=63)
+            img = tf.image.random_contrast(img, lower=0.2, upper=1.8)
+
             return tf.scalar_mul(1/255.0, tf.cast(tf.reshape(img, [config.IMAGE_SIZE[0]* config.IMAGE_SIZE[1]* config.NUM_RGB_CHANNEL]), baseConfig.floatSize))
 
         def read_image(filename):

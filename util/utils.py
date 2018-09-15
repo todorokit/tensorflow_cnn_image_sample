@@ -24,14 +24,15 @@ def listDir(dir):
     return ret
 
 def makeSess(flags, config):
-    gpuConfig = tf.ConfigProto(
-        gpu_options=tf.GPUOptions(
-            per_process_gpu_memory_fraction=flags.memory,
-            visible_device_list=config.visible_device_list
-#            ,allow_growth=True
-        )
-    )
-    sess = tf.Session(config=gpuConfig)
+#    gpuConfig = tf.ConfigProto(
+#        gpu_options=tf.GPUOptions(
+#            per_process_gpu_memory_fraction=flags.memory,
+#            visible_device_list=config.visible_device_list
+##            ,allow_growth=True
+#        )
+#    )
+# config=gpuConfig    
+    sess = tf.Session()
     sess.run(tf.global_variables_initializer())
     return sess
 

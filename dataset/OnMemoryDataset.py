@@ -58,9 +58,6 @@ class OnMemoryDataset(AbstractOnMemoryDataset):
             self.splitedAccuracyImage.append(self.images[batch:n])
             self.splitedAccuracyLabel.append(self.labels[batch:n])
 
-    def flow(self):
-        return [(self.splitedImage[i], self.splitedLabel[i]) for i in range(self.numTrainLoop)]
-
     def train(self, sess, op, phs, dropout=0.5):
-        for trains, labels in self.flow():
+        for trains, labels in [(self.splitedImage[i], self.splitedLabel[i]) for i in range(self.numTrainLoop)]:
             sess.run(op, feed_dict=phs.getDict(trains, labels, dropout, True))

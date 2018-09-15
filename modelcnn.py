@@ -3,14 +3,14 @@ import tensorflow as tf
 from config import baseConfig
 from tensorflow.contrib.all_reduce.python import all_reduce
 
-def inference(imagePh, keepProb, config, reuse = False, phaseTrain = None, freeze = False):
+def model(imagePh, keepProb, config, reuse = False, phaseTrain = None, freeze = False):
     tuneArray = []
     h = tf.reshape(imagePh, [-1, config.IMAGE_SIZE[0], config.IMAGE_SIZE[1], config.NUM_RGB_CHANNEL])
 
     for layer in config.conv2dList:
 #        print(klass.name)
 #        print(h.shape)
-        h = layer.apply(tuneArray, h, config.WSCALE, phaseTrain, keepProb, reuse, freeze)
+        h = layer.apply(tuneArray, h, phaseTrain, keepProb, reuse, freeze)
     return (h, tuneArray)
 
 def loss(logits, labels):
@@ -31,15 +31,62 @@ def accuracy(logits, labels):
     accuracy = tf.reduce_sum(tf.cast(correct_prediction, baseConfig.floatSize))
     return accuracy
 
-def compile(images, labels, keepProb, isTrain, config, learning_rate = 1e-4):
-    with tf.name_scope("tower_0"):
-        logits, _ = inference(images, keepProb, config, False, isTrain)
-    if config.dataType == "multi-label":
-        loss_value = crossentropy(logits, labels)
+def gradients_with_loss_scaling(loss, variables, loss_scale):
+    """Gradient calculation with loss scaling to improve numerical stability
+    when training with float16.
+    """
+    return [grad / loss_scale
+            for grad in tf.gradients(loss * loss_scale, variables)]
+
+DEFAULT_DTYPE = tf.float32
+def float32_variable_storage_getter(getter, name, shape=None, dtype=DEFAULT_DTYPE,
+                                    initializer=None, regularizer=None,
+                                    trainable=True,
+                                    *args, **kwargs):
+    """Custom variable getter that forces trainable variables to be stored in
+    float32 precision and then casts them to the training precision.
+    """
+    #print(name, dtype, trainable)
+    if dtype != tf.float32:
+        variable = getter(name, shape, dtype=tf.float32,
+                          initializer=initializer, regularizer=regularizer,
+                          trainable=trainable,
+                          *args, **kwargs)
+        variable = tf.cast(variable, dtype)
     else:
-        loss_value = loss(logits, labels)
+        variable = getter(name, shape, dtype=dtype,
+                          initializer=initializer, regularizer=regularizer,
+                          trainable=trainable,
+                          *args, **kwargs)
+    return variable
+
+def inference(images, keepProb, isTrain, config, FLAGS):
+    with tf.device('/cpu:0'), \
+         tf.variable_scope('fp32_storage', custom_getter=float32_variable_storage_getter):
+        with tf.name_scope("tower_0"):
+            logits, _ = model(images, keepProb, config,  False, isTrain)
+            return logits
+
+def compile(images, labels, keepProb, isTrain, config, FLAGS):
+    learning_rate = FLAGS.learning_rate
+    momentum      = 0.9
+    loss_scale    = 128
     
-    train_op = tf.train.AdamOptimizer(learning_rate).minimize(loss_value)
+    with tf.device('/gpu:0'), \
+         tf.variable_scope('fp32_storage', custom_getter=float32_variable_storage_getter):
+        with tf.name_scope("tower_0"):
+            logits, _ = model(images, keepProb, config, False, isTrain)
+            if config.dataType == "multi-label":
+                loss_value = crossentropy(logits, labels, FLAGS.batch_size//config.num_gpu, config.NUM_CLASSES)
+            else:
+                loss_value = loss(logits, labels)
+# MomentumOptimizer fp32でも収束しなかった。
+#        variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+#        grads = gradients_with_loss_scaling(loss_value, variables, loss_scale)
+#        optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
+#        train_op = optimizer.apply_gradients(zip(grads, variables))
+        train_op = tf.train.AdamOptimizer(learning_rate).minimize(loss_value)
+
     if config.dataType == "multi-label":
         acc_op = loss_value
     else:
@@ -49,8 +96,10 @@ def compile(images, labels, keepProb, isTrain, config, learning_rate = 1e-4):
 class Placeholders():
     def __init__(self, config, is_training = False):
         self.imagesPh = tf.placeholder(baseConfig.floatSize, shape=(None, config.IMAGE_SIZE[0]*config.IMAGE_SIZE[1]*config.NUM_RGB_CHANNEL))
-        self.labelsPh = tf.placeholder(baseConfig.floatSize, shape=(None, config.NUM_CLASSES))
-        self.keep_prob = tf.placeholder(baseConfig.floatSize)
+        ## 結果はfloat32
+        self.labelsPh = tf.placeholder(tf.float32, shape=(None, config.NUM_CLASSES))
+        self.keep_prob = tf.placeholder(tf.float32)
+#        self.keep_prob = tf.placeholder(baseConfig.floatSize)
         self.batch_size = tf.placeholder("int32")
         self.phase_train = tf.placeholder(tf.bool, name='phase_train') if is_training else None
 
@@ -135,8 +184,8 @@ def multiGpuLearning(config, phs, learning_rate= 1e-4):
                 slicedLabelPh = tf.slice(phs.getLabels(), slice_start, [in_batch_length, config.NUM_CLASSES])
                 with tf.device("/gpu:"+str(gpu_id)):
                     with tf.name_scope("tower_"+str(gpu_id)):
-                        logits, tuneArray = inference(slicedImagePh, phs.getKeepProb(), config, reuseVar, phs.getPhaseTrain())
-                        # 1回目はinferenceでreuse(参照)しない。 allocateする
+                        logits, tuneArray = model(slicedImagePh, phs.getKeepProb(), config, reuseVar, phs.getPhaseTrain())
+                        # 1回目はmodelでreuse(参照)しない。 allocateする
                         # 2回目以降はreuse(参照)する。
                         reuseVar = True
                         if xtuneArray is None:

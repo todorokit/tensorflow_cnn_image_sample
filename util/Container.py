@@ -70,7 +70,8 @@ class MyFactory(ComponentFactory):
     def buildOps(self):
         phs = self.container.get("placeholders")
         config = self.container.get("config")
-        return modelcnn.compile(phs.getImages(), phs.getLabels(), phs.getKeepProb(), phs.getPhaseTrain(), config)
+        FLAGS = self.container.get("flags")
+        return modelcnn.compile(phs.getImages(), phs.getLabels(), phs.getKeepProb(), phs.getPhaseTrain(), config, FLAGS)
 
     def buildOps_Mgpu(self):
         phs = self.container.get("placeholders")

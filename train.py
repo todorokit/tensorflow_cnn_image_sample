@@ -15,6 +15,7 @@ flags.DEFINE_integer('batch_size', 80, 'Training batch size. This must divide ev
 flags.DEFINE_integer('acc_batch_size', 500, 'Accuracy batch size. Take care of memory limit.')
 flags.DEFINE_string('config', "config.celeba", 'config module(file) name (no extension).')
 flags.DEFINE_float('memory', 0.90, 'Using gpu memory.')
+flags.DEFINE_float('learning_rate', 1e-4, 'learning rate')
 FLAGS = flags.FLAGS
 
 def main(argv):
@@ -24,11 +25,12 @@ def main(argv):
         config = Container.get("config")
         phs = Container.get("placeholders")
         if config.num_gpu > 1 :
-            print("MULTI GPU MODE")
+            gpumode = "MULTI GPU MODE"
             train_op, acc_op = Container.get("ops_mgpu")
         else:
-            print("SINGLE GPU MODE")
+            gpumode = "SINGLE GPU MODE"
             train_op, acc_op = Container.get("ops")
+        print ({"gpumode": gpumode, "learning_rate": FLAGS.learning_rate})
         sess = Container.get("sess")
         saver = Container.get("saver")
 
@@ -39,7 +41,7 @@ def main(argv):
                 validDataset = None
             else:
                 trainDataset = Container.get("largetraindataset")
-                testDataset =  Container.get("largetestdataset")
+                trainDataset = Container.get("largetestdataset")
                 validDataset = None
         else:
             trainDataset = Container.get("traindataset")

@@ -108,19 +108,16 @@ conv2dList = [
     FullConnect("fc", NUM_CLASSES)
 ]
 
-WSCALE=math.sqrt(2.0/NUM_CLASSES)
 modelFile = "model_v3.ckpt"
 scoreFileName = "score_v3.ckpt"
 num_gpu = 2
 
 imageResize = "resize" # when isLargeDataset is True then not use
 dataType = "label"
-accuracy = None
 faceType = "anime"
 
 trainFile = "train.txt"
 testFile = "test.txt"
 validFile = "valid.txt"
 
-outputType = [tf.int64]
 isLargeDataset = True

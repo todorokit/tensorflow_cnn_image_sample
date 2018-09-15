@@ -25,15 +25,11 @@ conv2dList = [ wr.Conv2D("conv_bn1", 32, (18, 18), padding="SAME"),
                wr.FullConnect("fc", NUM_CLASSES)
 ]
 
-WSCALE=math.sqrt(2.0/NUM_CLASSES)
-# multi gpu make same model.ckpt
 modelFile = "model.ckpt"
-num_gpu = 2
-visible_device_list="0"
+num_gpu = 1
 
 imageResize = "resize"
 dataType = "label"
-accuracy = None
 faceType = "anime"
 
 trainFile = "train.txt"

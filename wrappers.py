@@ -6,38 +6,7 @@ import tensorflow.python.platform
 
 from config import baseConfig
 
-# name を このclassに持ってくる。
-class Layer(object):
-    
-    # 1 gpu の場合、cpuに保存しない方が速い。multi gpu の場合, cpu側のメモリに保存しなくてはならない
-    def makeVar(self, name, shape, initializer, trainable=True):
-        #print(name+" " + str(shape) + " "+  str(trainable))
-        # gpuに配置すると、cpuで推論できなくなる。
-        with tf.device('/cpu:0'):
-            var = tf.get_variable(name, shape, initializer=initializer, trainable=trainable, dtype=baseConfig.floatSize)
-        return var
-
-    def weight_variable(self, tuneArray, shape, wscale= 0.1, freeze = False):
-        #      print (shape, wscale)
-        if freeze and tuneArray is not None:
-            v = self.makeVar("W", shape, initializer=tf.truncated_normal_initializer(stddev=wscale), trainable=not freeze)
-        else:
-            v = self.makeVar("W", shape, initializer=tf.truncated_normal_initializer(stddev=wscale))
-        if (tuneArray is not None):
-            tuneArray.append(v)
-        return v
-
-    def bias_variable(self, tuneArray, shape, freeze = False):
-        if freeze and tuneArray is not None:
-            v = self.makeVar("b", shape, initializer=tf.constant_initializer(0.1), trainable=not freeze)
-        else:
-            v = self.makeVar("b", shape, initializer=tf.constant_initializer(0.1))
-
-        if (tuneArray is not None):
-            tuneArray.append(v)
-        return v
-
-class Pooling2D(Layer):
+class Pooling2D:
     def __init__(self, name, pool_size=(3, 3), strides=(2, 2), padding='VALID'):
         self.name    = name
         self.ksize   = [1, pool_size[0], pool_size[1], 1]
@@ -45,45 +14,46 @@ class Pooling2D(Layer):
         self.padding = padding
     
 class MaxPooling2D(Pooling2D):
-    def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
         with tf.name_scope(self.name) as scope:
             return tf.nn.max_pool(h, ksize=self.ksize, strides=self.strides, padding=self.padding)
 
 class AveragePooling2D(Pooling2D):
-    def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
         with tf.name_scope(self.name) as scope:
             return tf.nn.avg_pool(h, ksize=self.ksize, strides=self.strides, padding=self.padding)
 
-class GlobalAveragePooling2D(Layer):
+class GlobalAveragePooling2D:
     def __init__(self, name, data_format="channels_last"):
         self.name = name
         self.data_format = data_format
 
-    def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
         if self.data_format == 'channels_last':
             return tf.reduce_mean(h, reduction_indices=[1, 2])
         else:
             return tf.reduce_mean(h, reduction_indices=[2, 3])
 
-class Conv2D(Layer):
+class Conv2D:
     def __init__(self, name, channel,  filter_size=(3, 3), strides=(1, 1), padding='VALID'):
         self.name    = name
         self.channel = channel
         self.filter_size   = filter_size
-        self.strides = [1, strides[0], strides[1], 1]
+        self.strides = strides
         self.padding = padding
 
-    def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
         with tf.name_scope(self.name) as scope:
             with tf.variable_scope(self.name+"_var", reuse = reuse) as vscope:
-                prevChannel = h.shape[3]
-                W = self.weight_variable(tuneArray, [self.filter_size[0], self.filter_size[1], prevChannel, self.channel], wscale, freeze)
-                b = self.bias_variable(tuneArray, [self.channel], freeze)
-                h = tf.nn.conv2d(h, W, strides=self.strides, padding=self.padding) + b
+                h = tf.layers.conv2d(
+                    inputs=h, filters=self.channel, kernel_size=self.filter_size, strides=self.strides,
+                    padding=self.padding, use_bias=True,
+                    kernel_initializer=tf.variance_scaling_initializer(),
+                    data_format='channels_last')
                 return tf.nn.relu(h)
 
 # this can use only single gpu
-class Conv2D_bn(Layer):
+class Conv2D_bn:
     def __init__(self, name, channel,  filter_size=(3, 3), strides=(1, 1), padding='VALID', useBias = False):
 #        if re.search("mgpu.py", sys.argv[0]):
 #            print("Conv2D_bn cannot use multi gpu enviroment.")
@@ -91,17 +61,17 @@ class Conv2D_bn(Layer):
         self.name    = name
         self.channel = channel
         self.filter_size   = filter_size
-        self.strides = [1, strides[0], strides[1], 1]
+        self.strides = strides
         self.padding = padding
         self.useBias = useBias
 
     def batch_norm(self, tuneArray, x, is_training, decay=0.9, eps=1e-5):
       shape = x.get_shape().as_list()
       assert len(shape) in [2, 4]
-    
+      
       n_out = shape[-1]
-      beta = tf.Variable(tf.zeros([n_out], dtype=baseConfig.floatSize), dtype=baseConfig.floatSize)
-      gamma = tf.Variable(tf.ones([n_out], dtype=baseConfig.floatSize), dtype=baseConfig.floatSize)
+      beta = tf.Variable(tf.zeros([n_out], dtype=tf.float32), dtype=tf.float32)
+      gamma = tf.Variable(tf.ones([n_out], dtype=tf.float32), dtype=tf.float32)
       
       if len(shape) == 2:
         batch_mean, batch_var = tf.nn.moments(x, [0])
@@ -120,65 +90,62 @@ class Conv2D_bn(Layer):
                           lambda : (ema.average(batch_mean), ema.average(batch_var)))
       return tf.nn.batch_normalization(x, mean, var, beta, gamma, eps)
 
-    def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
         with tf.name_scope(self.name) as scope:
             with tf.variable_scope(self.name+"_var", reuse = reuse) as vscope:
-                prevChannel = h.shape[3]
-                W = self.weight_variable(tuneArray, [self.filter_size[0], self.filter_size[1], prevChannel, self.channel], wscale, freeze)
-                if self.useBias:
-                    b = self.bias_variable(tuneArray, [self.channel], freeze)
-                    h = tf.nn.conv2d(h, W, strides=self.strides, padding=self.padding) + b
-                else:
-                    h = tf.nn.conv2d(h, W, strides=self.strides, padding=self.padding)
+                h = tf.layers.conv2d(
+                    inputs=h, filters=self.channel, kernel_size=self.filter_size, strides=self.strides,
+                    padding=self.padding, use_bias=self.useBias,
+                    kernel_initializer=tf.variance_scaling_initializer(),
+                    data_format='channels_last')
             with tf.variable_scope(self.name+"_var", reuse = None) as vscope:
                 # reuse = Noneでも良いみたい。trainable = Falseだからかもしれない。
+                if baseConfig.floatSize == tf.float16:
+                    h = tf.cast(h, dtype = tf.float32)
                 h = self.batch_norm(tuneArray, h, phaseTrain)
+                if baseConfig.floatSize == tf.float16:
+                    h = tf.cast(h, dtype = tf.float16)
                 return tf.nn.relu(h)
 
-class Flatten(Layer):
+class Flatten:
     def __init__(self, name = "flatten"):
         self.name = name
 
-    def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
         shape = h.get_shape().as_list()
         channel = shape[1] * shape[2] * shape[3]
         return tf.reshape(h, [-1, channel])
 
-class Dropout(Layer):
+class Dropout:
     def __init__(self, name = "dropout"):
         self.name = name
 
-    def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
+        if baseConfig.floatSize != tf.float32:
+            h = tf.cast(h, tf.float32)
         return tf.nn.dropout(h, keepProb)
 
-class Lrn(Layer):
-    def __init__(self, name = "lrn"):
-        self.name = name
-
-    def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse, freeze):
-        return tf.nn.lrn(h)
-
-class FullConnect(Layer):
+class FullConnect:
     def __init__(self, name, numClasses, activationProc = tf.nn.softmax):
         self.name = name
         self.numClasses = numClasses
         self.activationProc = activationProc
 
-    def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
         with tf.name_scope(self.name) as scope:
             with tf.variable_scope(self.name+"_var", reuse = reuse) as vscope:
-                prevChannel = h.shape[1]
-                W = self.weight_variable(None, [prevChannel, self.numClasses], wscale)
-                b = self.bias_variable(None, [self.numClasses])
-                return self.activationProc(tf.matmul(h, W) + b)
+                h = tf.layers.dense(h, self.numClasses, trainable= not freeze)
+                if baseConfig.floatSize == tf.float16:
+                    h = tf.cast(h, dtype = tf.float32)
+                return self.activationProc(h)
 
-class Concat(Layer):
+class Concat:
     def __init__(self, *layers, name = None, axis = 3):
         self.name = name
         self.layersList = layers
         self.axis = axis
 
-    def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
         results = []
         for layers in self.layersList:
             # print("-- concat layer loop ("+self.name+") --")
@@ -186,29 +153,9 @@ class Concat(Layer):
             for layer in layers:
                 # print(layer.name)
                 # print(h_in.shape)
-                h_in = layer.apply(tuneArray, h_in, wscale, phaseTrain, keepProb, reuse, freeze)
+                h_in = layer.apply(tuneArray, h_in, phaseTrain, keepProb, reuse, freeze)
             # print("output")
             # print(h_in.shape)
             results.append(h_in)
         return tf.concat(results, self.axis, name=self.name)
 
-class Concat2D(Layer):
-    def __init__(self, layers, name = None, axis = 3):
-        self.name = name
-        self.layersList = layers
-        self.axis = axis
-
-    def apply(self, tuneArray, h, wscale, phaseTrain, keepProb, reuse, freeze):
-        results = []
-        for layers in self.layersList:
-            # print("-- concat layer loop ("+self.name+") --")
-            h_in = h
-            for layer in layers:
-                # print(layer.name)
-                # print(h_in.shape)
-                h_in = layer.apply(tuneArray, h_in, wscale, phaseTrain, keepProb, reuse, freeze)
-            # print("output")
-            # print(h_in.shape)
-            results.append(h_in)
-        return tf.concat(results, self.axis, name=self.name)
-    

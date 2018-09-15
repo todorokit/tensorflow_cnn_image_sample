@@ -108,15 +108,12 @@ conv2dList = [
     FullConnect("fc", NUM_CLASSES)
 ]
 
-WSCALE=math.sqrt(2.0/NUM_CLASSES)
 modelFile = "model_celeba.ckpt"
 scoreFileName = "score_celeba.ckpt"
-num_gpu = 2
-visible_device_list="0"
+num_gpu = 1
 
 imageResize = "resize"
 dataType = "label"
-accuracy = None
 faceType = "anime"
 
 trainFile = "train.txt"

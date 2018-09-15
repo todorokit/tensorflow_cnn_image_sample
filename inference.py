@@ -36,10 +36,9 @@ NUM_CLASSES = config.NUM_CLASSES
 phaseTrain = tf.placeholder(tf.bool, name='phaseTrain')
 images_placeholder = tf.placeholder(baseConfig.floatSize, shape=(None, IMAGE_SIZE[0]*IMAGE_SIZE[1]*NUM_RGB_CHANNEL))
 labels_placeholder = tf.placeholder(baseConfig.floatSize, shape=(None, NUM_CLASSES))
-keepProb = tf.placeholder(baseConfig.floatSize, name="keepProb")
+keepProb = tf.placeholder(tf.float32, name="keepProb")
 
-with tf.name_scope("tower_0"):
-    logits, _ = modelcnn.inference(images_placeholder, keepProb, config,  False, phaseTrain)
+logits = modelcnn.inference(images_placeholder, keepProb, phaseTrain, config,  FLAGS)
 sess = Container.get("sess")
 saver = Container.get("saver")
 
@@ -129,8 +128,11 @@ def inferenceDir(dir):
         inferenceAndSave(batch, batch_img)
         
 def inferenceFile(path):
-    test_image, test_image_real, _ = getImages(path)
-    test_image = [dataset.LargeDataset.img2vector(path, config, Container)]
+    if config.isLargeDataset:
+        test_image = [dataset.LargeDataset.img2vector(path, config, Container)]
+    else:
+        test_image, test_image_real, _ = getImages(path)
+    
 
     for i in range(len(test_image)):
         image = test_image[i]

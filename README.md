@@ -12,13 +12,22 @@ Apache License.
 ## dependency
 
 * ubuntu 16.04
-* python3.5
-* tensorflow '1.3'
+* tensorflow
+* opencv
+
+## テスト環境
+
+* python3.6.6
+* tensorflow-gpu 1.10
+* cuda 9.0
+* cudnn 7.2.1.38
 
 ## やったこと
 
 * 車輪の再発明
-* 長所bazelを使わなくて済む。
+* multi gpu
+* multi label
+* データサイズが大きくても学習できるようにする (resizeしてない)
 
 ## data
 
@@ -36,25 +45,30 @@ img/classN/*.jpg
 
 ```
 cp -r /path/to/image img
-cp config/xv3.pyexample config/xv3.py # inception v3 を 73x73の画像に合わせた
-vi config/xv3.py
+cp config/v3_modoki.pyexample config/v3_modoki.py # inception v3 を 73x73の画像に合わせた
+cp config-example/baseConfig.py config/baseConfig.py
+vi config/v3_modoki.py
+vi config/baseConfig.py # Volta
 python make-test.py 70 30 #各クラス 70 の学習データと 30のテストデータ
 python train.py --config config.xv3
 ```
 
 このプロジェクトでは、少量の本番同様データをバリデーションデータということにしている。
 
-# celebA 対応メモ
-
-* crop するとネクタイ・ネックレス・帽子が見えない可能性が高い
-* inferenceの時と画像切抜きが違う(73x73にしないと枚数稼げない)
-* データが片寄っているので大半が-1のデータはあまり当てにならない？
-* accuracyの計算がsigmoidではなく N個のsoftmax
-* メモリが少ないとデータがメモリに載らない。
-
 # 最近の活動
 
+* Titan V でfloat16 のテストした。精度がでるようにした？速度は1080tiの2.5倍程度？手放しに10倍速くなると思ったのに、調整して2.5倍。
+* 画像数100万でも学習できるようにした。
 * multi GPU で batch_normalizationを対応させた。
 * multi GPU で celeba対応した。
 * linux 対応した。
 * float16対応した。(GTX1080tiでは遅くなった.型変換入っているのかも？)
+
+# TODO
+* pad crop で正方形にしてから、リサイズする
+* Large Dataset (multi labelも) で shuffleできるようにする。
+* test Dataset はキャッシュできるようにする
+* tf.layers.batch_normalizationをつかう
+
+# メモ
+* TitanV ボトルネックは メモリ転送レートが1.7Gbps だからか、batch_normalizationがtensorcore使えないからからか。

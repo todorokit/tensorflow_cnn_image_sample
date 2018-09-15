@@ -25,18 +25,15 @@ conv2dList = [ wr.Conv2D("conv_bn1", 32, (18, 18), padding="SAME"),
                wr.FullConnect("fc", NUM_CLASSES)
 ]
 
-WSCALE=math.sqrt(2.0/NUM_CLASSES)
 modelFile = "model.ckpt"
 num_gpu = 2
 
 imageResize = "resize" # when isLargeDataset is True then not use
 dataType = "label"
-accuracy = None
 faceType = "anime"
 
 trainFile = "train.txt"
 testFile = "test.txt"
 validFile = "valid.txt"
 
-outputType = [tf.int64]
 isLargeDataset = False
