@@ -4,14 +4,16 @@ from config import baseConfig
 from tensorflow.contrib.all_reduce.python import all_reduce
 
 def model(imagePh, keepProb, config, reuse = False, phaseTrain = None, freeze = False):
-    tuneArray = []
-    h = tf.reshape(imagePh, [-1, config.IMAGE_SIZE[0], config.IMAGE_SIZE[1], config.NUM_RGB_CHANNEL])
+    if config.dataFormat == "channels_last":
+        h = tf.reshape(imagePh, [-1, config.IMAGE_SIZE[0], config.IMAGE_SIZE[1], config.NUM_RGB_CHANNEL])
+    else:
+        h = tf.reshape(imagePh, [-1, config.NUM_RGB_CHANNEL, config.IMAGE_SIZE[0], config.IMAGE_SIZE[1]])
 
     for layer in config.conv2dList:
 #        print(klass.name)
 #        print(h.shape)
-        h = layer.apply(tuneArray, h, phaseTrain, keepProb, reuse, freeze)
-    return (h, tuneArray)
+        h = layer.apply(h, phaseTrain, keepProb, reuse, freeze)
+    return h
 
 def loss(logits, labels):
     loss = -tf.reduce_sum(labels*tf.log(tf.clip_by_value(logits,1e-10,1.0-1e-10)))
@@ -62,22 +64,22 @@ def float32_variable_storage_getter(getter, name, shape=None, dtype=DEFAULT_DTYP
                           *args, **kwargs)
     return variable
 
-def inference(images, keepProb, isTrain, config, FLAGS):
+def inference(phs, config, FLAGS):
     with tf.device('/cpu:0'), \
          tf.variable_scope('fp32_storage', custom_getter=float32_variable_storage_getter):
         with tf.name_scope("tower_0"):
-            logits, _ = model(images, keepProb, config,  False, isTrain)
+            logits = model(phs.getImages(), phs.getKeepProb(), config,  False, phs.getPhaseTrain())
             return logits
 
-def compile(images, labels, keepProb, isTrain, config, FLAGS):
+def compile(phs, config, FLAGS):
     learning_rate = FLAGS.learning_rate
     momentum      = 0.9
     loss_scale    = 128
-    
+    labels = phs.getLabels()
     with tf.device('/gpu:0'), \
          tf.variable_scope('fp32_storage', custom_getter=float32_variable_storage_getter):
         with tf.name_scope("tower_0"):
-            logits, _ = model(images, keepProb, config, False, isTrain)
+            logits = model(phs.getImages(), phs.getKeepProb(), config, False, phs.getPhaseTrain())
             if config.dataType == "multi-label":
                 loss_value = crossentropy(logits, labels)
             else:
@@ -94,7 +96,7 @@ def compile(images, labels, keepProb, isTrain, config, FLAGS):
         acc_op = loss_value
     else:
         acc_op = accuracy(logits, labels)
-    return (train_op, acc_op, loss_value, extra_update_ops)
+    return (train_op, acc_op, loss_value, extra_update_ops, phs)
 
 class Placeholders():
     def __init__(self, config, is_training = False):
@@ -138,6 +140,7 @@ class Placeholders():
                 self.getPhaseTrain(): is_training
             }
 
+# FIXME: use NCCL
 def average_gradients(tower_grads):
     average_grads = []
     # 各variableに対して
@@ -146,7 +149,7 @@ def average_gradients(tower_grads):
         
         # 各GPUの結果に対して 平均を取る
         for g, _ in grad_and_vars:
-            # batch_normalization の updateは mean_var_with_updateで行っているので無視したい。
+            # batch_normalization の updateは無視する設定だったが、改良後テストしてない。
             # 同変数はreuse = None にしているので、 None としてリストされる。
             # None 以外でリストされてしまう変数も trainable = Falseなので大丈夫っぽい
             if g is not None:
@@ -172,7 +175,6 @@ def multiGpuLearning(config, phs, learning_rate= 1e-4):
         logitsList = []
         towerGrads = []
         lossvalues = []
-        xtuneArray = None
         opt = tf.train.AdamOptimizer(learning_rate)
 
         reuseVar = False
@@ -188,12 +190,10 @@ def multiGpuLearning(config, phs, learning_rate= 1e-4):
                 with tf.device("/gpu:"+str(gpu_id)), \
                      tf.variable_scope('fp32_storage', custom_getter=float32_variable_storage_getter):
                     with tf.name_scope("tower_"+str(gpu_id)):
-                        logits, tuneArray = model(slicedImagePh, phs.getKeepProb(), config, reuseVar, phs.getPhaseTrain())
+                        logits = model(slicedImagePh, phs.getKeepProb(), config, reuseVar, phs.getPhaseTrain())
                         # 1回目はmodelでreuse(参照)しない。 allocateする
                         # 2回目以降はreuse(参照)する。
                         reuseVar = True
-                        if xtuneArray is None:
-                            xtuneArray = tuneArray
                         logitsList.append((logits, slicedLabelPh))
                         if config.dataType == "multi-label":
                             loss_value = crossentropy(logits, slicedLabelPh)
@@ -205,9 +205,10 @@ def multiGpuLearning(config, phs, learning_rate= 1e-4):
 
             grads = average_gradients(towerGrads)
             train_op = opt.apply_gradients(grads, global_step=global_step)
+            extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 
             if config.dataType == "multi-label":
                 acc_op = tf.add_n(lossvalues)
             else:
                 acc_op = tf.add_n([accuracy(logits, labels) for logits, labels in logitsList])
-            return train_op, acc_op, xtuneArray, debug
+            return train_op, acc_op, loss_value, extra_update_ops, phs

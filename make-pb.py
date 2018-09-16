@@ -16,13 +16,12 @@ def main(argv):
 
         Container = getContainer(FLAGS)
         config = Container.get("config")
-        phs = Container.get("placeholders")
         if config.num_gpu > 1 :
             gpumode = "MULTI GPU MODE"
-            train_op, acc_op = Container.get("ops_mgpu")
+            train_op, acc_op,_ ,_ ,phs = Container.get("ops_mgpu")
         else:
             gpumode = "SINGLE GPU MODE"
-            train_op, acc_op = Container.get("ops")
+            train_op, acc_op,_ ,_, phs = Container.get("ops")
 
         with tf.Session() as sess:
             saver = tf.train.Saver()

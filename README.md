@@ -54,6 +54,6 @@ python train.py --config config.xv3
 
 # TODO
 
-* tf.layers.batch_normalizationをつかう
 * channels_first にする。
-* placeholder は modelで生成する。
+* nccl対応(現在GPU1枚なので未定)
+* server-node構成(マシン1台なので未定)

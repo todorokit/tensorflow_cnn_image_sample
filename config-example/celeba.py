@@ -8,6 +8,8 @@ from modelcnn import crossentropy
 NUM_CLASSES = 40
 IMAGE_SIZE = (73, 73)
 NUM_RGB_CHANNEL = 3
+# 未対応
+dataFormat = "channels_last"
 
 conv2dList = [
     Conv2D_bn("conv1", 80, (1, 1)),
@@ -113,7 +115,6 @@ modelFile = "model_celeba.ckpt"
 scoreFileName = "score_celeba.ckpt"
 num_gpu = 1
 
-# 画像サイズを既に加工済みなら、cropが速い
 dataType = "multi-label"
 faceType = "real"
 

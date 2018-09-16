@@ -7,6 +7,8 @@ from wrappers import Conv2D_bn, MaxPooling2D, AveragePooling2D, Flatten, Dropout
 NUM_CLASSES = 186
 IMAGE_SIZE = (73, 73)
 NUM_RGB_CHANNEL = 3
+# 未対応
+dataFormat = "channels_last"
 
 conv2dList = [
     Conv2D_bn("conv1", 80, (1, 1)),
@@ -108,8 +110,8 @@ conv2dList = [
     FullConnect("fc", NUM_CLASSES)
 ]
 
-modelFile = "model_celeba.ckpt"
-scoreFileName = "score_celeba.ckpt"
+modelFile = "model_v3.ckpt"
+scoreFileName = "score_v3.ckpt"
 num_gpu = 1
 
 dataType = "label"
@@ -117,7 +119,7 @@ faceType = "anime"
 
 trainFile = "train.txt"
 testFile = "test.txt"
-validFile = "valid.txt"
+validFile = "not found"
 
 isCacheTrain = False
 isCacheTest = False

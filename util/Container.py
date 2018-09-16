@@ -69,13 +69,18 @@ class MyFactory(ComponentFactory):
         phs = self.container.get("placeholders")
         config = self.container.get("config")
         FLAGS = self.container.get("flags")
-        return modelcnn.compile(phs.getImages(), phs.getLabels(), phs.getKeepProb(), phs.getPhaseTrain(), config, FLAGS)
+        return modelcnn.compile(phs, config, FLAGS)
 
     def buildOps_Mgpu(self):
         phs = self.container.get("placeholders")
         config = self.container.get("config")
-        train_op, acc_op, _, debug = modelcnn.multiGpuLearning(config, phs)
-        return (train_op, acc_op)
+        return modelcnn.multiGpuLearning(config, phs)
+
+    def buildLogits(self):
+        phs = self.container.get("placeholders")
+        config = self.container.get("config")
+        FLAGS = self.container.get("flags")
+        return (phs, modelcnn.inference(phs, config,  FLAGS))
 
     def buildLargetraindataset(self):
         config = self.container.get("config")

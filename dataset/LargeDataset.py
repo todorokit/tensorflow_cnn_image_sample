@@ -3,16 +3,6 @@ import tensorflow as tf
 from dataset.AbstractDataset import AbstractDataset
 import config.baseConfig as baseConfig
 
-def img2vector(path, config):
-    contents = tf.read_file(path)
-    img = tf.image.decode_image(contents)
-    shape = tf.shape(img)
-    height = tf.cond(shape[0] > shape[1], lambda : shape[1], lambda :shape[0])
-    img = tf.image.resize_image_with_crop_or_pad(img, height, height)
-    img = tf.image.resize_images(img, [config.IMAGE_SIZE[1],config.IMAGE_SIZE[0]])
-    imgop = tf.scalar_mul(1/255.0, tf.cast(tf.reshape(img, [config.IMAGE_SIZE[0]* config.IMAGE_SIZE[1]* config.NUM_RGB_CHANNEL]), baseConfig.floatSize))
-    return imgop
-
 class LargeDataset(AbstractDataset):
     def __init__(self, csvpath, config, batch_size, cache):
         def makeImage(img):
@@ -75,7 +65,7 @@ class LargeDataset(AbstractDataset):
                 except Exception as e:
                     break
             sess.run([op, extra_update_ops], feed_dict=phs.getDict(trains, labels, dropout, True))
-            if loop % 500 == 499:
+            if loop % 1000 == 999:
                 acc = sess.run(loss_op, feed_dict=phs.getDict(trains, labels, 1.0)) / len(trains)
                 saver.save("%s train-loss: %g" % (mytimer.getNow("%H:%M:%S"), acc))
   

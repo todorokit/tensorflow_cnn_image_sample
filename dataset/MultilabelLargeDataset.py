@@ -69,7 +69,7 @@ class MultilabelLargeDataset(AbstractDataset):
                 except Exception as e:
                     break
             sess.run([op, extra_update_ops], feed_dict=phs.getDict(trains, labels, dropout, True))
-            if loop % 500 == 499:
+            if loop % 1000 == 999:
                 acc = sess.run(loss_op, feed_dict=phs.getDict(trains, labels, 1.0)) / len(trains)
                 saver.save("%s train-loss: %g"% (mytimer.getNow("%H:%M:%S"), acc))
   

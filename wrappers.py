@@ -14,12 +14,12 @@ class Pooling2D:
         self.padding = padding
     
 class MaxPooling2D(Pooling2D):
-    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, h, phaseTrain, keepProb, reuse, freeze):
         with tf.name_scope(self.name) as scope:
             return tf.nn.max_pool(h, ksize=self.ksize, strides=self.strides, padding=self.padding)
 
 class AveragePooling2D(Pooling2D):
-    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, h, phaseTrain, keepProb, reuse, freeze):
         with tf.name_scope(self.name) as scope:
             return tf.nn.avg_pool(h, ksize=self.ksize, strides=self.strides, padding=self.padding)
 
@@ -28,7 +28,7 @@ class GlobalAveragePooling2D:
         self.name = name
         self.data_format = data_format
 
-    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, h, phaseTrain, keepProb, reuse, freeze):
         if self.data_format == 'channels_last':
             return tf.reduce_mean(h, reduction_indices=[1, 2])
         else:
@@ -42,7 +42,7 @@ class Conv2D:
         self.strides = strides
         self.padding = padding
 
-    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, h, phaseTrain, keepProb, reuse, freeze):
         with tf.name_scope(self.name) as scope:
             with tf.variable_scope(self.name+"_var", reuse = reuse) as vscope:
                 h = tf.layers.conv2d(
@@ -72,7 +72,7 @@ class Conv2D_bn:
             momentum=decay, epsilon=eps, center=True,
             scale=True, training=is_training, fused=True)
 
-    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, h, phaseTrain, keepProb, reuse, freeze):
         with tf.name_scope(self.name) as scope:
             with tf.variable_scope(self.name+"_var", reuse = reuse) as vscope:
                 h = tf.layers.conv2d(
@@ -93,7 +93,7 @@ class Flatten:
     def __init__(self, name = "flatten"):
         self.name = name
 
-    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, h, phaseTrain, keepProb, reuse, freeze):
         shape = h.get_shape().as_list()
         channel = shape[1] * shape[2] * shape[3]
         return tf.reshape(h, [-1, channel])
@@ -102,7 +102,7 @@ class Dropout:
     def __init__(self, name = "dropout"):
         self.name = name
 
-    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, h, phaseTrain, keepProb, reuse, freeze):
         if baseConfig.floatSize != tf.float32:
             h = tf.cast(h, tf.float32)
         return tf.nn.dropout(h, keepProb)
@@ -113,7 +113,7 @@ class FullConnect:
         self.numClasses = numClasses
         self.activationProc = activationProc
 
-    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, h, phaseTrain, keepProb, reuse, freeze):
         with tf.name_scope(self.name) as scope:
             with tf.variable_scope(self.name+"_var", reuse = reuse) as vscope:
                 h = tf.layers.dense(h, self.numClasses, trainable= not freeze)
@@ -122,12 +122,14 @@ class FullConnect:
                 return self.activationProc(h, name= self.name+"_act")
 
 class Concat:
-    def __init__(self, *layers, name = None, axis = 3):
+    def __init__(self, *layers, name = None, data_format = 'channels_last'):
+        self.name = name
         self.name = name
         self.layersList = layers
-        self.axis = axis
+        self.data_format = data_format
+        self.axis = 1 if self.data_format == 'channels_first' else 3
 
-    def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
+    def apply(self, h, phaseTrain, keepProb, reuse, freeze):
         results = []
         for layers in self.layersList:
             # print("-- concat layer loop ("+self.name+") --")
@@ -135,7 +137,7 @@ class Concat:
             for layer in layers:
                 # print(layer.name)
                 # print(h_in.shape)
-                h_in = layer.apply(tuneArray, h_in, phaseTrain, keepProb, reuse, freeze)
+                h_in = layer.apply(h_in, phaseTrain, keepProb, reuse, freeze)
             # print("output")
             # print(h_in.shape)
             results.append(h_in)

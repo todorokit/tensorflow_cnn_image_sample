@@ -40,7 +40,7 @@ flags.DEFINE_integer('epoch', 1000, 'Number of epoch to run trainer.')
 flags.DEFINE_integer('batch_size', 80, 'Training batch size. This must divide evenly into the train dataset sizes.')
 flags.DEFINE_integer('acc_batch_size', 500, 'Accuracy batch size. Take care of memory limit.')
 flags.DEFINE_float('memory', 0.90, 'Using gpu memory.')
-flags.DEFINE_boolean('freeze', True, 'Number of epoch to run trainer.')
+flags.DEFINE_boolean('freeze', True, 'Freeze variables.')
 
 def main(_):
     with tf.Graph().as_default():
@@ -58,9 +58,8 @@ def main(_):
         labels_placeholder = phs.getLabels()
         phaseTrain = phs.getPhaseTrain()
 
-        # tuneArrayにFC変数は入らない。その他 EMAの変数等も入らない
         with tf.name_scope("tower_0"):
-            logits, tuneArray = modelcnn.inference(images_placeholder, keep_prob, config, False, phaseTrain, FLAGS.freeze)
+            logits = modelcnn.model(images_placeholder, keep_prob, config, False, phaseTrain, FLAGS.freeze)
         loss_value = modelcnn.loss(logits, labels_placeholder)
         train_op = tf.train.AdamOptimizer(0.0001).minimize(loss_value)
         acc_op = modelcnn.getAccuracyOp(logits, labels_placeholder, config)

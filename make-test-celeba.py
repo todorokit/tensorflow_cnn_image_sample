@@ -38,8 +38,7 @@ def main(trainNum, testNum):
             words = line.split(" ")
             ix = 0
             for word in words:
-                classes[ix*2] = "not " + word
-                classes[ix*2+1] = word
+                classes[ix] = word
                 ix += 1
             fp = open(os.path.join("config", "classes.py"), "w")
             fp.write("classList = {}\n")
