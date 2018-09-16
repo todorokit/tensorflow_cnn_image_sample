@@ -24,12 +24,11 @@ class AveragePooling2D(Pooling2D):
             return tf.nn.avg_pool(h, ksize=self.ksize, strides=self.strides, padding=self.padding)
 
 class GlobalAveragePooling2D:
-    def __init__(self, name, data_format="channels_last"):
+    def __init__(self, name):
         self.name = name
-        self.data_format = data_format
 
     def apply(self, h, phaseTrain, keepProb, reuse, freeze):
-        if self.data_format == 'channels_last':
+        if baseConfig.dataFormat == 'channels_last':
             return tf.reduce_mean(h, reduction_indices=[1, 2])
         else:
             return tf.reduce_mean(h, reduction_indices=[2, 3])
@@ -64,11 +63,10 @@ class Conv2D_bn:
         self.strides = strides
         self.padding = padding
         self.useBias = useBias
-        self.data_format = "channels_last"
 
     def batch_norm(self, x, is_training, decay=0.9, eps=1e-5):
         return tf.layers.batch_normalization(
-            inputs=x, axis=1 if self.data_format == 'channels_first' else 3,
+            inputs=x, axis=1 if baseConfig.dataFormat == 'channels_first' else 3,
             momentum=decay, epsilon=eps, center=True,
             scale=True, training=is_training, fused=True)
 
@@ -79,7 +77,7 @@ class Conv2D_bn:
                     inputs=h, filters=self.channel, kernel_size=self.filter_size, strides=self.strides,
                     padding=self.padding, use_bias=self.useBias,
                     kernel_initializer=tf.variance_scaling_initializer(),
-                    data_format='channels_last')
+                    data_format=baseConfig.dataFormat)
             with tf.variable_scope(self.name+"_var", reuse = None) as vscope:
                 # reuse = Noneでも良いみたい。trainable = Falseだからかもしれない。
                 if baseConfig.floatSize == tf.float16:
@@ -122,12 +120,11 @@ class FullConnect:
                 return self.activationProc(h, name= self.name+"_act")
 
 class Concat:
-    def __init__(self, *layers, name = None, data_format = 'channels_last'):
+    def __init__(self, *layers, name = None):
         self.name = name
         self.name = name
         self.layersList = layers
-        self.data_format = data_format
-        self.axis = 1 if self.data_format == 'channels_first' else 3
+        self.axis = 1 if baseConfig.dataFormat == 'channels_first' else 3
 
     def apply(self, h, phaseTrain, keepProb, reuse, freeze):
         results = []

@@ -10,6 +10,8 @@ def img2op(path, config):
     height = tf.cond(shape[0] > shape[1], lambda : shape[1], lambda :shape[0])
     img = tf.image.resize_image_with_crop_or_pad(img, height, height)
     img = tf.image.resize_images(img, [config.IMAGE_SIZE[1],config.IMAGE_SIZE[0]])
+    if baseConfig.dataFormat == "channels_first":
+        img = tf.transpose(img, perm=[0, 3, 1, 2])
     imgop = tf.scalar_mul(1/255.0, tf.cast(tf.reshape(img, [config.IMAGE_SIZE[0]* config.IMAGE_SIZE[1]* config.NUM_RGB_CHANNEL]), baseConfig.floatSize))
     return imgop
     

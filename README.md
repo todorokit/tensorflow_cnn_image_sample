@@ -54,6 +54,6 @@ python train.py --config config.xv3
 
 # TODO
 
-* channels_first にする。
+* channels_first にする。(tensorflow のtf.layerがサポートしてないため保留)
 * nccl対応(現在GPU1枚なので未定)
-* server-node構成(マシン1台なので未定)
+* ps-worker構成(マシン1台なので未定)

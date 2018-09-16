@@ -4,7 +4,7 @@ from config import baseConfig
 from tensorflow.contrib.all_reduce.python import all_reduce
 
 def model(imagePh, keepProb, config, reuse = False, phaseTrain = None, freeze = False):
-    if config.dataFormat == "channels_last":
+    if baseConfig.dataFormat == "channels_last":
         h = tf.reshape(imagePh, [-1, config.IMAGE_SIZE[0], config.IMAGE_SIZE[1], config.NUM_RGB_CHANNEL])
     else:
         h = tf.reshape(imagePh, [-1, config.NUM_RGB_CHANNEL, config.IMAGE_SIZE[0], config.IMAGE_SIZE[1]])

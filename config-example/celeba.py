@@ -8,8 +8,6 @@ from modelcnn import crossentropy
 NUM_CLASSES = 40
 IMAGE_SIZE = (73, 73)
 NUM_RGB_CHANNEL = 3
-# 未対応
-dataFormat = "channels_last"
 
 conv2dList = [
     Conv2D_bn("conv1", 80, (1, 1)),
