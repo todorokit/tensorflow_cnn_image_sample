@@ -97,12 +97,12 @@ def compile(images, labels, keepProb, isTrain, config, FLAGS):
 
 class Placeholders():
     def __init__(self, config, is_training = False):
-        self.imagesPh = tf.placeholder(baseConfig.floatSize, shape=(None, config.IMAGE_SIZE[0]*config.IMAGE_SIZE[1]*config.NUM_RGB_CHANNEL))
+        self.imagesPh = tf.placeholder(baseConfig.floatSize, shape=(None, config.IMAGE_SIZE[0]*config.IMAGE_SIZE[1]*config.NUM_RGB_CHANNEL), name='input_image')
         ## 結果はfloat32
-        self.labelsPh = tf.placeholder(tf.float32, shape=(None, config.NUM_CLASSES))
-        self.keep_prob = tf.placeholder(tf.float32)
+        self.labelsPh = tf.placeholder(tf.float32, shape=(None, config.NUM_CLASSES), name='input_label')
+        self.keep_prob = tf.placeholder(tf.float32, name='keep_prob')
 #        self.keep_prob = tf.placeholder(baseConfig.floatSize)
-        self.batch_size = tf.placeholder("int32")
+        self.batch_size = tf.placeholder("int32", name='batch_size')
         self.phase_train = tf.placeholder(tf.bool, name='phase_train') if is_training else None
 
     def getImages(self):

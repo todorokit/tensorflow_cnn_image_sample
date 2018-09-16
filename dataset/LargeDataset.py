@@ -3,15 +3,15 @@ import tensorflow as tf
 from dataset.AbstractDataset import AbstractDataset
 import config.baseConfig as baseConfig
 
-def img2vector(path, config, Container):
+def img2vector(path, config):
     contents = tf.read_file(path)
     img = tf.image.decode_image(contents)
     shape = tf.shape(img)
     height = tf.cond(shape[0] > shape[1], lambda : shape[1], lambda :shape[0])
     img = tf.image.resize_image_with_crop_or_pad(img, height, height)
     img = tf.image.resize_images(img, [config.IMAGE_SIZE[1],config.IMAGE_SIZE[0]])
-    img = tf.scalar_mul(1/255.0, tf.cast(tf.reshape(img, [config.IMAGE_SIZE[0]* config.IMAGE_SIZE[1]* config.NUM_RGB_CHANNEL]), baseConfig.floatSize))
-    return Container.get("sess").run(img)
+    imgop = tf.scalar_mul(1/255.0, tf.cast(tf.reshape(img, [config.IMAGE_SIZE[0]* config.IMAGE_SIZE[1]* config.NUM_RGB_CHANNEL]), baseConfig.floatSize))
+    return imgop
 
 class LargeDataset(AbstractDataset):
     def __init__(self, csvpath, config, batch_size, cache):

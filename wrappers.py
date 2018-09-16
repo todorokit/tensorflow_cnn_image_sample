@@ -137,7 +137,7 @@ class FullConnect:
                 h = tf.layers.dense(h, self.numClasses, trainable= not freeze)
                 if baseConfig.floatSize == tf.float16:
                     h = tf.cast(h, dtype = tf.float32)
-                return self.activationProc(h)
+                return self.activationProc(h, name= self.name+"_act")
 
 class Concat:
     def __init__(self, *layers, name = None, axis = 3):

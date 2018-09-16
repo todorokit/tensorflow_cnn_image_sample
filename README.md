@@ -19,7 +19,7 @@ Apache License.
 
 * python3.6.6
 * tensorflow-gpu 1.10
-* cuda 9.0
+* cuda 9.2
 * cudnn 7.2.1.38
 
 ## やったこと
@@ -27,7 +27,7 @@ Apache License.
 * 車輪の再発明
 * multi gpu
 * multi label
-* データサイズが大きくても学習できるようにする (resizeしてない)
+* データサイズが大きくても学習できるようにする
 
 ## data
 
@@ -38,13 +38,10 @@ img/class2/*.jpg
 img/classN/*.jpg
 ```
 
-※メモリに載ること。
-73(width) x 73(height) x 3(RGB) x 4(float) x imageNum
-
 # execute
 
 ```
-cp -r /path/to/image img
+ln -s /path/to/image img
 cp config/v3_modoki.pyexample config/v3_modoki.py # inception v3 を 73x73の画像に合わせた
 cp config-example/baseConfig.py config/baseConfig.py
 vi config/v3_modoki.py
@@ -55,15 +52,8 @@ python train.py --config config.xv3
 
 このプロジェクトでは、少量の本番同様データをバリデーションデータということにしている。
 
-# 最近の活動
-
-* Titan V でfloat16 のテストした。精度がでるようにした？
-* 画像数100万でも学習できるようにした。
-* multi GPU で batch_normalizationを対応させた。
-* multi GPU で celeba対応した。
-
 # TODO
+
 * tf.layers.batch_normalizationをつかう
 * channels_first にする。
-* protocol bufferで出力
 * placeholder は modelで生成する。
