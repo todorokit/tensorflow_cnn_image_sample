@@ -27,7 +27,7 @@ def main(argv):
             train_op, acc_op = Container.get("ops_mgpu")
         else:
             gpumode = "SINGLE GPU MODE"
-            train_op, acc_op = Container.get("ops")
+            train_op, acc_op, loss_op, extra_update_ops = Container.get("ops")
         print ({"gpumode": gpumode, "learning_rate": FLAGS.learning_rate})
         sess = Container.get("sess")
         saver = Container.get("saver")
@@ -50,7 +50,7 @@ def main(argv):
             timer = MyTimer()
             test_accuracy = -1.0
             valid_accuracy = -1.0
-            trainDataset.train(sess, train_op, acc_op, phs, saver)
+            trainDataset.train(sess, train_op, loss_op, extra_update_ops, phs, saver, timer)
             test_accuracy = testDataset.calcAccuracy(sess, acc_op, phs)
             valid_accuracy = -1.0
             if validDataset is not None:

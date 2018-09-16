@@ -57,7 +57,7 @@ class MultilabelLargeDataset(AbstractDataset):
     def getLen(self):
         return self.length
 
-    def train(self, sess, op, acc_op, phs, saver, dropout=0.5):
+    def train(self, sess, op, loss_op, extra_update_ops, phs, saver, mytimer,dropout=0.5):
         with tf.device("cpu:0"):
             sess.run(self._iterator.initializer)
         for loop in range(1000000):
@@ -68,10 +68,10 @@ class MultilabelLargeDataset(AbstractDataset):
                         break
                 except Exception as e:
                     break
-            sess.run(op, feed_dict=phs.getDict(trains, labels, dropout, True))
-            if loop % 100 == 99:
-                acc = sess.run(acc_op, feed_dict=phs.getDict(trains, labels, 1.0)) / len(trains)
-                saver.save("train-loss: %g"% acc)
+            sess.run([op, extra_update_ops], feed_dict=phs.getDict(trains, labels, dropout, True))
+            if loop % 500 == 499:
+                acc = sess.run(loss_op, feed_dict=phs.getDict(trains, labels, 1.0)) / len(trains)
+                saver.save("%s train-loss: %g"% (mytimer.getNow("%H:%M:%S"), acc))
   
     def calcAccuracy(self, sess, op, phs):
         acc_sum = 0

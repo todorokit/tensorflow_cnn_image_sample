@@ -88,12 +88,13 @@ def compile(images, labels, keepProb, isTrain, config, FLAGS):
 #        optimizer = tf.train.MomentumOptimizer(learning_rate, momentum)
 #        train_op = optimizer.apply_gradients(zip(grads, variables))
         train_op = tf.train.AdamOptimizer(learning_rate).minimize(loss_value)
+        extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 
     if config.dataType == "multi-label":
         acc_op = loss_value
     else:
         acc_op = accuracy(logits, labels)
-    return (train_op, acc_op)
+    return (train_op, acc_op, loss_value, extra_update_ops)
 
 class Placeholders():
     def __init__(self, config, is_training = False):

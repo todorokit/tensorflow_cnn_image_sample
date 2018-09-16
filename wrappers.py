@@ -64,31 +64,13 @@ class Conv2D_bn:
         self.strides = strides
         self.padding = padding
         self.useBias = useBias
+        self.data_format = "channels_last"
 
-    def batch_norm(self, tuneArray, x, is_training, decay=0.9, eps=1e-5):
-      shape = x.get_shape().as_list()
-      assert len(shape) in [2, 4]
-      
-      n_out = shape[-1]
-      beta = tf.Variable(tf.zeros([n_out], dtype=tf.float32), dtype=tf.float32)
-      gamma = tf.Variable(tf.ones([n_out], dtype=tf.float32), dtype=tf.float32)
-      
-      if len(shape) == 2:
-        batch_mean, batch_var = tf.nn.moments(x, [0])
-      else:
-        batch_mean, batch_var = tf.nn.moments(x, [0, 1, 2])
-
-      # 平均と分散を出せばいいが、emaが負荷が低いのかな？
-      # 内部で(trainable = False)の変数を使用している。
-      ema = tf.train.ExponentialMovingAverage(decay=decay)
-    
-      def mean_var_with_update():
-        ema_apply_op = ema.apply([batch_mean, batch_var])
-        with tf.control_dependencies([ema_apply_op]):
-          return tf.identity(batch_mean), tf.identity(batch_var)
-      mean, var = tf.cond(is_training, mean_var_with_update,
-                          lambda : (ema.average(batch_mean), ema.average(batch_var)))
-      return tf.nn.batch_normalization(x, mean, var, beta, gamma, eps)
+    def batch_norm(self, x, is_training, decay=0.9, eps=1e-5):
+        return tf.layers.batch_normalization(
+            inputs=x, axis=1 if self.data_format == 'channels_first' else 3,
+            momentum=decay, epsilon=eps, center=True,
+            scale=True, training=is_training, fused=True)
 
     def apply(self, tuneArray, h, phaseTrain, keepProb, reuse, freeze):
         with tf.name_scope(self.name) as scope:
@@ -102,7 +84,7 @@ class Conv2D_bn:
                 # reuse = Noneでも良いみたい。trainable = Falseだからかもしれない。
                 if baseConfig.floatSize == tf.float16:
                     h = tf.cast(h, dtype = tf.float32)
-                h = self.batch_norm(tuneArray, h, phaseTrain)
+                h = self.batch_norm(h, phaseTrain)
                 if baseConfig.floatSize == tf.float16:
                     h = tf.cast(h, dtype = tf.float16)
                 return tf.nn.relu(h)
