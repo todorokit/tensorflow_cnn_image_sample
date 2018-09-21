@@ -28,19 +28,8 @@ def main(argv):
             saver.restore(sess, config.modelFile)  # 学習済みのグラフを読み込み
 
             #print(graph.as_graph_def())
-
-            graph_def = tf.graph_util.convert_variables_to_constants(
-                sess, graph.as_graph_def(), ['fp32_storage/tower_0/fc/fc_var/fc_act'])
-            for node in graph_def.node:
-                if node.op == 'RefSwitch':
-                    node.op = 'Switch'
-                    for index in range(len(node.input)):
-                        if 'moving_' in node.input[index]:
-                            node.input[index] = node.input[index] + '/read'
-                elif node.op == 'AssignSub':
-                    node.op = 'Sub'
-                    if 'use_locking' in node.attr: del node.attr['use_locking']
-            tf.train.write_graph(graph_def, '.','graph.pb', as_text=False)
+            graph = graph.as_graph_def()
+            tf.train.write_graph(graph, '.','/tmp/graph.pb', as_text=False)
 
 if __name__ == '__main__':
     tf.app.run()

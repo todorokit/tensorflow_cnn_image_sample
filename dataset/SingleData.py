@@ -24,10 +24,10 @@ def runTopnPb(sess, pbfile, imageop, config, thre):
     arr = sess.run('fp32_storage/tower_0/fc/fc_var/fc_act:0', feed_dict={'input_image:0': [image], 'keep_prob:0': 1.0, 'phase_train:0': False})[0]
     ret = []
     if config.dataType == "multi-label":
-        print("ml")
+        print("multi label")
         indices = filter(lambda x: arr[x] > thre, range(config.NUM_CLASSES))
     else:
-        print("top5")
+        print("single lable top5")
         indices = top5(arr)
     for j in indices:
         ret.append((classList[j] , arr[j]))

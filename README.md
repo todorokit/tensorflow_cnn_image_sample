@@ -25,6 +25,7 @@ Apache License.
 ## やったこと
 
 * 車輪の再発明
+* fp16 対応(中途半端)
 * multi gpu
 * multi label
 * データサイズが大きくても学習できるようにする
